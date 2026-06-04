@@ -128,6 +128,7 @@ type CurrentUser = {
 };
 
 const subjects = [
+  "Tất cả các môn",
   "Toán",
   "Tiếng Việt",
   "Khoa học",
