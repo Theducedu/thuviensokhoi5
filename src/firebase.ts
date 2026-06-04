@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, getRedirectResult, signInWithPopup, signInWithRedirect, signOut } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -18,19 +18,41 @@ const firebaseApp = isFirebaseAuthReady
 const auth = firebaseApp ? getAuth(firebaseApp) : null;
 export const db = firebaseApp ? getFirestore(firebaseApp) : null;
 
+function googleProvider() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  return provider;
+}
+
+function toGoogleUser(user: { email: string | null; displayName: string | null }) {
+  return {
+    email: user.email ?? "",
+    displayName: user.displayName ?? "",
+  };
+}
+
 export async function signInWithGoogle() {
   if (!auth) {
     throw new Error("Firebase Auth chua duoc cau hinh.");
   }
 
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  const result = await signInWithPopup(auth, provider);
+  const result = await signInWithPopup(auth, googleProvider());
+  return toGoogleUser(result.user);
+}
 
-  return {
-    email: result.user.email ?? "",
-    displayName: result.user.displayName ?? "",
-  };
+export async function signInWithGoogleRedirect() {
+  if (!auth) {
+    throw new Error("Firebase Auth chua duoc cau hinh.");
+  }
+
+  await signInWithRedirect(auth, googleProvider());
+}
+
+export async function getGoogleRedirectUser() {
+  if (!auth) return null;
+
+  const result = await getRedirectResult(auth);
+  return result ? toGoogleUser(result.user) : null;
 }
 
 export async function signOutGoogle() {

@@ -37,7 +37,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db, isFirebaseAuthReady, signInWithGoogle, signOutGoogle } from "./firebase";
+import { db, getGoogleRedirectUser, isFirebaseAuthReady, signInWithGoogle, signInWithGoogleRedirect, signOutGoogle } from "./firebase";
 import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 
 type Role = "viewer" | "teacher" | "admin";
@@ -166,6 +166,7 @@ const digitalCategories: DigitalApp["category"][] = [
 
 const storageKey = "khoi5-library-data";
 const sessionKey = "khoi5-library-user";
+const googlePendingViewKey = "khoi5-google-pending-view";
 const deletedDefaultsStorageKey = "khoi5-deleted-defaults";
 const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
 const defaultGuideThumbnail =
@@ -208,6 +209,18 @@ function isEbookResource(resource: Resource) {
   if (resource.type === "ebook") return true;
   const searchable = `${resource.title} ${resource.category} ${resource.description}`.toLowerCase();
   return searchable.includes("sách điện tử") || searchable.includes("ebook") || searchable.includes("e-book");
+}
+
+function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function isEmbeddedBrowser() {
+  return /FBAN|FBAV|Instagram|Line|MicroMessenger|Zalo|TikTok|wv/i.test(navigator.userAgent);
+}
+
+function isView(value: string | null): value is View {
+  return value === "dashboard" || value === "resources" || value === "news" || value === "contribute" || value === "guides" || value === "digital" || value === "admin";
 }
 
 const today = new Date().toISOString();
@@ -1000,6 +1013,86 @@ export default function App() {
     setView("dashboard");
   };
 
+  const completeGoogleLogin = async (googleUser: { email: string; displayName: string }) => {
+    if (!googleUser.email) {
+      setLoginError("Tài khoản Google chưa trả về email. Vui lòng thử tài khoản khác.");
+      return;
+    }
+
+    const googleEmail = googleUser.email.toLowerCase();
+    let authorizedUser = data.teachers.find(
+      (item) => item.email.toLowerCase() === googleUser.email.toLowerCase() && item.active,
+    );
+
+    if (db) {
+      try {
+        if (googleEmail === primaryAdminEmail) {
+          authorizedUser = {
+            id: "t-admin",
+            name: "Quản trị Khối 5",
+            email: primaryAdminEmail,
+            subject: "Quản trị",
+            code: "",
+            role: "admin",
+            active: true,
+          };
+          await setDoc(
+            doc(db, "authorizedUsers", emailDocId(primaryAdminEmail)),
+            {
+              ...authorizedUser,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        } else {
+          const accessSnapshot = await getDoc(doc(db, "authorizedUsers", emailDocId(googleEmail)));
+          if (accessSnapshot.exists()) {
+            const item = accessSnapshot.data();
+            if (item.active !== false) {
+              authorizedUser = {
+                id: String(item.id || accessSnapshot.id),
+                name: String(item.name || googleUser.displayName || googleEmail),
+                email: String(item.email || googleEmail).toLowerCase(),
+                subject: String(item.subject || "Chưa phân môn"),
+                code: "",
+                role: item.role === "admin" ? "admin" : "teacher",
+                active: true,
+              };
+            } else {
+              authorizedUser = undefined;
+            }
+          }
+        }
+      } catch {
+        // Fallback to local data if Firestore is not enabled yet.
+      }
+    }
+
+    const nextUser: CurrentUser = {
+      name: authorizedUser?.name || googleUser.displayName || googleEmail,
+      email: authorizedUser?.email || googleEmail,
+      role: authorizedUser?.role || "viewer",
+      subject: authorizedUser?.subject || "Người xem",
+    };
+    const storedPendingView = sessionStorage.getItem(googlePendingViewKey);
+    const nextPendingView = pendingView ?? (isView(storedPendingView) ? storedPendingView : null);
+
+    updateLocalLoginStats(nextUser);
+    void recordRemoteLogin(nextUser).then(() => {
+      if (nextUser.role === "admin") void refreshRemoteAccessData();
+    });
+    setUser(nextUser);
+    localStorage.setItem(sessionKey, JSON.stringify(nextUser));
+    sessionStorage.removeItem(googlePendingViewKey);
+    setLoginError("");
+    setGoogleAuthMessage("");
+    setShowAuthModal(false);
+    if (nextPendingView && (nextPendingView !== "contribute" || nextUser.role !== "viewer")) {
+      setView(nextPendingView);
+      setPendingView(null);
+    }
+  };
+
   const loginWithGoogle = async () => {
     setLoginError("");
     setGoogleAuthMessage("");
@@ -1009,90 +1102,51 @@ export default function App() {
       return;
     }
 
+    if (isEmbeddedBrowser()) {
+      setLoginError("Google chặn đăng nhập trong trình duyệt nhúng của Zalo/Facebook/Messenger. Vui lòng bấm dấu ba chấm rồi chọn mở bằng Safari hoặc Chrome.");
+      return;
+    }
+
     try {
       setIsGoogleSigningIn(true);
-      const googleUser = await signInWithGoogle();
-
-      if (!googleUser.email) {
-        setLoginError("Tài khoản Google chưa trả về email. Vui lòng thử tài khoản khác.");
+      if (isMobileBrowser()) {
+        if (pendingView) sessionStorage.setItem(googlePendingViewKey, pendingView);
+        await signInWithGoogleRedirect();
         return;
       }
 
-      const googleEmail = googleUser.email.toLowerCase();
-      let authorizedUser = data.teachers.find(
-        (item) => item.email.toLowerCase() === googleUser.email.toLowerCase() && item.active,
-      );
-
-      if (db) {
-        try {
-          if (googleEmail === primaryAdminEmail) {
-            authorizedUser = {
-              id: "t-admin",
-              name: "Quản trị Khối 5",
-              email: primaryAdminEmail,
-              subject: "Quản trị",
-              code: "",
-              role: "admin",
-              active: true,
-            };
-            await setDoc(
-              doc(db, "authorizedUsers", emailDocId(primaryAdminEmail)),
-              {
-                ...authorizedUser,
-                updatedAt: serverTimestamp(),
-              },
-              { merge: true },
-            );
-          } else {
-            const accessSnapshot = await getDoc(doc(db, "authorizedUsers", emailDocId(googleEmail)));
-            if (accessSnapshot.exists()) {
-              const item = accessSnapshot.data();
-              if (item.active !== false) {
-                authorizedUser = {
-                  id: String(item.id || accessSnapshot.id),
-                  name: String(item.name || googleUser.displayName || googleEmail),
-                  email: String(item.email || googleEmail).toLowerCase(),
-                  subject: String(item.subject || "Chưa phân môn"),
-                  code: "",
-                  role: item.role === "admin" ? "admin" : "teacher",
-                  active: true,
-                };
-              } else {
-                authorizedUser = undefined;
-              }
-            }
-          }
-        } catch {
-          // Fallback to local data if Firestore is not enabled yet.
-        }
-      }
-
-      const nextUser: CurrentUser = {
-        name: authorizedUser?.name || googleUser.displayName || googleEmail,
-        email: authorizedUser?.email || googleEmail,
-        role: authorizedUser?.role || "viewer",
-        subject: authorizedUser?.subject || "Người xem",
-      };
-
-      updateLocalLoginStats(nextUser);
-      void recordRemoteLogin(nextUser).then(() => {
-        if (nextUser.role === "admin") void refreshRemoteAccessData();
-      });
-      setUser(nextUser);
-      localStorage.setItem(sessionKey, JSON.stringify(nextUser));
-      setLoginError("");
-      setGoogleAuthMessage("");
-      setShowAuthModal(false);
-      if (pendingView && (pendingView !== "contribute" || nextUser.role !== "viewer")) {
-        setView(pendingView);
-        setPendingView(null);
-      }
+      const googleUser = await signInWithGoogle();
+      await completeGoogleLogin(googleUser);
     } catch {
-      setLoginError("Không đăng nhập Google được. Kiểm tra Firebase Auth và domain đã cấp quyền.");
+      setLoginError("Không đăng nhập Google được. Kiểm tra Firebase Auth, domain đã cấp quyền, hoặc mở web bằng Safari/Chrome.");
     } finally {
       setIsGoogleSigningIn(false);
     }
   };
+
+  useEffect(() => {
+    if (!isFirebaseAuthReady) return;
+
+    let cancelled = false;
+    void getGoogleRedirectUser()
+      .then(async (googleUser) => {
+        if (!googleUser || cancelled) return;
+        setIsGoogleSigningIn(true);
+        await completeGoogleLogin(googleUser);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoginError("Không hoàn tất được đăng nhập Google. Vui lòng mở web bằng Safari/Chrome rồi thử lại.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsGoogleSigningIn(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const hasStaffAccess = user?.role === "teacher" || user?.role === "admin";
 
@@ -2717,6 +2771,11 @@ export default function App() {
                 <Chrome size={18} />
                 {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
               </button>
+            )}
+            {!user && (
+              <p className="auth-note">
+                Trên điện thoại, hãy mở web bằng Safari hoặc Chrome. Google không cho đăng nhập trong trình duyệt nhúng của Zalo/Facebook/Messenger.
+              </p>
             )}
             {googleAuthMessage && <p className="auth-note success">{googleAuthMessage}</p>}
             {loginError && <p className="form-error">{loginError}</p>}
