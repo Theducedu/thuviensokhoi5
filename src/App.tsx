@@ -86,6 +86,9 @@ type Guide = {
   imageUrl: string;
   linkUrl: string;
   linkLabel: string;
+  videoUrl?: string;
+  downloadUrl?: string;
+  downloadLabel?: string;
   author: string;
   createdAt: string;
 };
@@ -161,6 +164,34 @@ const sessionKey = "khoi5-library-user";
 const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
 const defaultGuideThumbnail =
   "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80";
+
+function getYouTubeVideoId(url: string) {
+  if (!url.trim()) return "";
+
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.replace(/^www\./, "");
+
+    if (hostname === "youtu.be") {
+      return parsedUrl.pathname.split("/").filter(Boolean)[0] || "";
+    }
+
+    if (hostname === "youtube.com" || hostname === "m.youtube.com" || hostname === "youtube-nocookie.com") {
+      if (parsedUrl.pathname.startsWith("/embed/")) return parsedUrl.pathname.split("/")[2] || "";
+      if (parsedUrl.pathname.startsWith("/shorts/")) return parsedUrl.pathname.split("/")[2] || "";
+      return parsedUrl.searchParams.get("v") || "";
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+function getYouTubeEmbedUrl(url: string) {
+  const videoId = getYouTubeVideoId(url);
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
+}
 
 const today = new Date().toISOString();
 
@@ -274,6 +305,8 @@ const seedData: AppData = {
       imageUrl: "https://images.unsplash.com/photo-1617042375876-a13e36732a04?auto=format&fit=crop&w=1200&q=80",
       linkUrl: "https://drive.google.com/drive/folders/1mqKYoE7h90gFlC5yKK3Hg1Rc8zVPQgJL",
       linkLabel: "Tải về",
+      downloadUrl: "https://drive.google.com/drive/folders/1mqKYoE7h90gFlC5yKK3Hg1Rc8zVPQgJL",
+      downloadLabel: "Tải về",
       author: "Nguyễn Đức",
       createdAt: "2026-06-05T08:00:00.000Z",
     },
@@ -393,7 +426,13 @@ function normalizeData(data: AppData): AppData {
   const digitalApps = [...savedDigitalApps, ...seedData.digitalApps.filter((app) => !savedDigitalAppIds.has(app.id))]
     .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
     .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
-  const savedGuides = (data.guides ?? seedData.guides).map((guide) => ({ ...guide, imageUrl: guide.imageUrl ?? "" }));
+  const savedGuides = (data.guides ?? seedData.guides).map((guide) => ({
+    ...guide,
+    imageUrl: guide.imageUrl ?? "",
+    videoUrl: guide.videoUrl ?? "",
+    downloadUrl: guide.downloadUrl ?? "",
+    downloadLabel: guide.downloadLabel ?? "",
+  }));
   const savedGuideIds = new Set(savedGuides.map((guide) => guide.id));
   const guides = [...savedGuides, ...seedData.guides.filter((guide) => !savedGuideIds.has(guide.id))];
 
@@ -797,6 +836,9 @@ export default function App() {
           imageUrl: String(item.imageUrl || ""),
           linkUrl: String(item.linkUrl || ""),
           linkLabel: String(item.linkLabel || "Mở liên kết"),
+          videoUrl: String(item.videoUrl || ""),
+          downloadUrl: String(item.downloadUrl || ""),
+          downloadLabel: String(item.downloadLabel || ""),
           author: String(item.author || "Ban quản trị"),
           createdAt: toIsoDate(item.createdAt),
         } satisfies Guide;
@@ -1306,13 +1348,21 @@ export default function App() {
       return;
     }
 
+    const videoUrl = String(form.get("videoUrl") || "").trim();
+    const downloadUrl = String(form.get("downloadUrl") || "").trim();
+    const linkUrl = String(form.get("linkUrl") || "").trim() || videoUrl || downloadUrl;
+    const linkLabel = String(form.get("linkLabel") || "").trim() || (videoUrl ? "Xem Demo" : downloadUrl ? "Tải về" : "Mở liên kết");
+
     const next: Guide = {
       id: createId("g"),
       title: String(form.get("title") || ""),
       content: String(form.get("content") || ""),
       imageUrl,
-      linkUrl: String(form.get("linkUrl") || ""),
-      linkLabel: String(form.get("linkLabel") || "Mở liên kết"),
+      linkUrl,
+      linkLabel,
+      videoUrl,
+      downloadUrl,
+      downloadLabel: String(form.get("downloadLabel") || "").trim() || "Tải về",
       author: user.name,
       createdAt: new Date().toISOString(),
     };
@@ -1352,13 +1402,21 @@ export default function App() {
       return;
     }
 
+    const videoUrl = String(form.get("videoUrl") || "").trim();
+    const downloadUrl = String(form.get("downloadUrl") || "").trim();
+    const linkUrl = String(form.get("linkUrl") || "").trim() || videoUrl || downloadUrl;
+    const linkLabel = String(form.get("linkLabel") || "").trim() || (videoUrl ? "Xem Demo" : downloadUrl ? "Tải về" : "Mở liên kết");
+
     const updatedGuide: Guide = {
       ...existingGuide,
       title: String(form.get("title") || ""),
       content: String(form.get("content") || ""),
       imageUrl,
-      linkUrl: String(form.get("linkUrl") || ""),
-      linkLabel: String(form.get("linkLabel") || "Mở liên kết"),
+      linkUrl,
+      linkLabel,
+      videoUrl,
+      downloadUrl,
+      downloadLabel: String(form.get("downloadLabel") || "").trim() || "Tải về",
     };
 
     try {
@@ -1825,14 +1883,18 @@ export default function App() {
                 </div>
                 <div className="form-grid">
                   <label>
-                    Tên link
-                    <input name="linkLabel" placeholder="Ví dụ: Xem video hướng dẫn" />
+                    Link YouTube demo
+                    <input name="videoUrl" type="url" placeholder="https://youtube.com/watch?v=..." />
                   </label>
                   <label>
-                    Link đính kèm
-                    <input name="linkUrl" type="url" placeholder="https://..." />
+                    Link Drive tải về
+                    <input name="downloadUrl" type="url" placeholder="https://drive.google.com/..." />
                   </label>
                 </div>
+                <label>
+                  Tên nút tải
+                  <input name="downloadLabel" placeholder="Ví dụ: Tải về" />
+                </label>
                 <button className="primary-button" type="submit">
                   <Plus size={18} />
                   Đăng bài
@@ -1844,7 +1906,13 @@ export default function App() {
               {data.guides.length === 0 ? (
                 <EmptyState title="Chưa có bài cẩm nang" text="Các bài chia sẻ CNTT-AI sẽ xuất hiện tại đây." />
               ) : (
-                data.guides.map((guide) => (
+                data.guides.map((guide) => {
+                  const guideVideoUrl = guide.videoUrl || (getYouTubeEmbedUrl(guide.linkUrl) ? guide.linkUrl : "");
+                  const guideEmbedUrl = getYouTubeEmbedUrl(guideVideoUrl);
+                  const guideDownloadUrl = guide.downloadUrl || (!guideEmbedUrl ? guide.linkUrl : "");
+                  const guideDownloadLabel = guide.downloadLabel || guide.linkLabel || "Tải về";
+
+                  return (
                   <article className={`guide-card ${editingGuideId === guide.id ? "editing" : ""}`} key={guide.id}>
                     {editingGuideId === guide.id ? (
                       <form className="resource-edit-form" onSubmit={(event) => saveGuideEdit(event, guide.id)}>
@@ -1868,14 +1936,18 @@ export default function App() {
                         </div>
                         <div className="form-grid">
                           <label>
-                            Tên link
-                            <input name="linkLabel" defaultValue={guide.linkLabel} placeholder="Ví dụ: Xem video hướng dẫn" />
+                            Link YouTube demo
+                            <input name="videoUrl" type="url" defaultValue={guide.videoUrl || (getYouTubeEmbedUrl(guide.linkUrl) ? guide.linkUrl : "")} placeholder="https://youtube.com/watch?v=..." />
                           </label>
                           <label>
-                            Link đính kèm
-                            <input name="linkUrl" type="url" defaultValue={guide.linkUrl} placeholder="https://..." />
+                            Link Drive tải về
+                            <input name="downloadUrl" type="url" defaultValue={guideDownloadUrl} placeholder="https://drive.google.com/..." />
                           </label>
                         </div>
+                        <label>
+                          Tên nút tải
+                          <input name="downloadLabel" defaultValue={guideDownloadLabel} placeholder="Ví dụ: Tải về" />
+                        </label>
                         <div className="review-actions">
                           <button className="success-button" type="submit">
                             <Save size={17} />
@@ -1888,7 +1960,17 @@ export default function App() {
                       </form>
                     ) : (
                       <>
-                        <img className="guide-card-thumbnail" src={guide.imageUrl || defaultGuideThumbnail} alt={guide.title} />
+                        {guideEmbedUrl ? (
+                          <iframe
+                            className="guide-video-frame"
+                            src={guideEmbedUrl}
+                            title={guide.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                          />
+                        ) : (
+                          <img className="guide-card-thumbnail" src={guide.imageUrl || defaultGuideThumbnail} alt={guide.title} />
+                        )}
                         <div className="guide-card-head">
                           <span className="guide-icon">
                             <Lightbulb size={20} />
@@ -1902,11 +1984,21 @@ export default function App() {
                         </div>
                         <p>{guide.content}</p>
                         <div className="card-footer">
-                          {guide.linkUrl ? (
-                            <button className="text-button" onClick={() => window.open(guide.linkUrl, "_blank", "noopener,noreferrer")}>
-                              {guide.linkLabel || "Mở liên kết"}
-                              <ExternalLink size={16} />
-                            </button>
+                          {guideVideoUrl || guideDownloadUrl ? (
+                            <div className="review-actions">
+                              {guideVideoUrl && (
+                                <button className="text-button" onClick={() => window.open(guideVideoUrl, "_blank", "noopener,noreferrer")}>
+                                  Xem Demo
+                                  <ExternalLink size={16} />
+                                </button>
+                              )}
+                              {guideDownloadUrl && (
+                                <button className="text-button" onClick={() => window.open(guideDownloadUrl, "_blank", "noopener,noreferrer")}>
+                                  {guideDownloadLabel}
+                                  <ExternalLink size={16} />
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span>Không có link đính kèm</span>
                           )}
@@ -1924,7 +2016,8 @@ export default function App() {
                       </>
                     )}
                   </article>
-                ))
+                  );
+                })
               )}
             </div>
           </section>

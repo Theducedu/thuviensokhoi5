@@ -1265,13 +1265,23 @@ textarea:focus {
   box-shadow: 0 14px 32px rgba(28, 45, 40, 0.06);
 }
 
-.guide-card-thumbnail {
+.guide-card-thumbnail,
+.guide-video-frame {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 7;
-  object-fit: cover;
   border-radius: 8px;
   box-shadow: 0 14px 34px rgba(28, 45, 40, 0.12);
+}
+
+.guide-card-thumbnail {
+  object-fit: cover;
+}
+
+.guide-video-frame {
+  aspect-ratio: 16 / 9;
+  border: 0;
+  background: #0f172a;
 }
 
 .guide-card-head {
