@@ -642,6 +642,11 @@ textarea:focus {
   gap: 14px;
 }
 
+.compact-metrics {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
 .metric {
   display: flex;
   align-items: center;
@@ -652,6 +657,20 @@ textarea:focus {
   background: #ffffff;
   padding: 16px;
   box-shadow: 0 12px 28px rgba(26, 44, 39, 0.05);
+}
+
+.compact-metrics .metric {
+  min-height: 72px;
+  padding: 12px;
+}
+
+.compact-metrics .metric > span {
+  width: 38px;
+  height: 38px;
+}
+
+.compact-metrics .metric strong {
+  font-size: 1.2rem;
 }
 
 .metric:hover,
@@ -721,6 +740,24 @@ textarea:focus {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
   gap: 22px;
+}
+
+.dashboard-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.dashboard-side {
+  display: grid;
+  gap: 16px;
+}
+
+.subject-focus {
+  background:
+    linear-gradient(135deg, rgba(235, 247, 255, 0.92), rgba(255, 251, 235, 0.78)),
+    #ffffff;
 }
 
 .section-heading {
@@ -822,6 +859,52 @@ textarea:focus {
   padding: 0 16px;
   font-weight: 850;
   border-color: color-mix(in srgb, var(--subject-main, #0f6d58) 22%, #dde6e3);
+}
+
+.featured-subjects {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.featured-subjects button {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 86px;
+  overflow: hidden;
+  padding: 16px;
+  text-align: left;
+  box-shadow: 0 12px 30px rgba(28, 45, 40, 0.06);
+}
+
+.featured-subjects button::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: var(--subject-main, #0f6d58);
+}
+
+.featured-subjects button span {
+  color: #15211f;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.featured-subjects button small {
+  color: #65736f;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.featured-subjects button strong {
+  grid-row: span 2;
+  min-width: 44px;
+  height: 44px;
+  font-size: 1rem;
 }
 
 .subject-strip strong {
@@ -1466,6 +1549,7 @@ td span {
   }
 
   .split,
+  .dashboard-overview,
   .admin-grid,
   .guide-layout,
   .digital-layout {
@@ -1602,6 +1686,10 @@ td span {
   }
 
   .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .featured-subjects {
     grid-template-columns: 1fr;
   }
 

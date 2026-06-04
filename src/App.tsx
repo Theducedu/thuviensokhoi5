@@ -690,7 +690,8 @@ export default function App() {
     const matchesQuery = `${item.title} ${item.description} ${item.contributor}`
       .toLowerCase()
       .includes(query.toLowerCase());
-    const matchesSubject = subjectFilter === "Tất cả" || item.subject === subjectFilter;
+    const matchesSubject =
+      subjectFilter === "Tất cả" || subjectFilter === "Tất cả các môn" || item.subject === subjectFilter;
     const matchesType = typeFilter === "all" || item.type === typeFilter;
     return matchesQuery && matchesSubject && matchesType;
   });
@@ -1136,16 +1137,51 @@ export default function App() {
               <img src="/banner-dashboard.jpg" alt="Thư viện số Khối 5 - TH Nguyễn Đình Chiểu" />
             </section>
 
-            <section className="metrics-grid">
-              <Metric icon={BarChart3} label="Lượt truy cập" value={stats.visits.toLocaleString("vi-VN")} />
-              <Metric icon={FileText} label="Tài liệu duyệt" value={String(stats.resources)} />
-              <Metric icon={ClipboardList} label="Chờ duyệt" value={String(stats.pending)} />
-              <Metric icon={Users} label="Tài khoản active" value={String(stats.teachers)} />
-              <Metric icon={ShieldCheck} label="Gmail đăng nhập" value={String(stats.loginAccounts)} />
+            <section className="subject-focus content-band">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">Kho học liệu theo môn</span>
+                  <h3>Môn học</h3>
+                </div>
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    if (!requireGoogleAccess("resources")) return;
+                    setSubjectFilter("Tất cả");
+                    setView("resources");
+                  }}
+                >
+                  Mở thư viện
+                  <ExternalLink size={16} />
+                </button>
+              </div>
+              <div className="subject-strip featured-subjects">
+                {subjects.map((subject) => {
+                  const count =
+                    subject === "Tất cả các môn"
+                      ? approvedResources.length
+                      : approvedResources.filter((item) => item.subject === subject).length;
+                  return (
+                    <button
+                      key={subject}
+                      className={subjectClass(subject)}
+                      onClick={() => {
+                        if (!requireGoogleAccess("resources")) return;
+                        setSubjectFilter(subject === "Tất cả các môn" ? "Tất cả" : subject);
+                        setView("resources");
+                      }}
+                    >
+                      <span>{subject}</span>
+                      <small>{count} tài liệu</small>
+                      <strong>{count}</strong>
+                    </button>
+                  );
+                })}
+              </div>
             </section>
 
-            <section className="content-band split">
-              <div>
+            <section className="dashboard-overview">
+              <div className="content-band">
                 <div className="section-heading">
                   <h3>Tài liệu mới</h3>
                   <button
@@ -1162,7 +1198,7 @@ export default function App() {
                 <div className="compact-list">
                   {approvedResources.slice(0, 4).map((item) => (
                     <button key={item.id} className="compact-item" onClick={() => openResource(item)}>
-                      <span className="subject-dot">{item.subject.slice(0, 1)}</span>
+                      <span className={`subject-dot ${subjectClass(item.subject)}`}>{item.subject.slice(0, 1)}</span>
                       <span>
                         <strong>{item.title}</strong>
                         <small>
@@ -1174,52 +1210,43 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <div>
-                <div className="section-heading">
-                  <h3>Ảnh hoạt động mới</h3>
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      if (!requireGoogleAccess("news")) return;
-                      setView("news");
-                    }}
-                  >
-                    Xem ảnh
-                    <ExternalLink size={16} />
-                  </button>
-                </div>
-                <div className="compact-list">
-                  {visibleNews.slice(0, 3).map((item) => (
-                    <article key={item.id} className="compact-news">
-                      <img src={item.imageUrl} alt="" />
-                      <div>
-                        <strong>{item.title}</strong>
-                        <small>{formatDate(item.createdAt)} · {item.author}</small>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </section>
 
-            <section className="subject-strip">
-              {subjects.map((subject) => {
-                const count = approvedResources.filter((item) => item.subject === subject).length;
-                return (
-                  <button
-                    key={subject}
-                    className={subjectClass(subject)}
-                    onClick={() => {
-                      if (!requireGoogleAccess("resources")) return;
-                      setSubjectFilter(subject);
-                      setView("resources");
-                    }}
-                  >
-                    <span>{subject}</span>
-                    <strong>{count}</strong>
-                  </button>
-                );
-              })}
+              <div className="dashboard-side">
+                <section className="metrics-grid compact-metrics">
+                  <Metric icon={BarChart3} label="Lượt truy cập" value={stats.visits.toLocaleString("vi-VN")} />
+                  <Metric icon={FileText} label="Tài liệu duyệt" value={String(stats.resources)} />
+                  <Metric icon={ClipboardList} label="Chờ duyệt" value={String(stats.pending)} />
+                  <Metric icon={Users} label="Tài khoản active" value={String(stats.teachers)} />
+                  <Metric icon={ShieldCheck} label="Gmail đăng nhập" value={String(stats.loginAccounts)} />
+                </section>
+
+                <section className="content-band">
+                  <div className="section-heading">
+                    <h3>Ảnh hoạt động mới</h3>
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        if (!requireGoogleAccess("news")) return;
+                        setView("news");
+                      }}
+                    >
+                      Xem ảnh
+                      <ExternalLink size={16} />
+                    </button>
+                  </div>
+                  <div className="compact-list">
+                    {visibleNews.slice(0, 3).map((item) => (
+                      <article key={item.id} className="compact-news">
+                        <img src={item.imageUrl} alt="" />
+                        <div>
+                          <strong>{item.title}</strong>
+                          <small>{formatDate(item.createdAt)} · {item.author}</small>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </div>
             </section>
           </div>
         )}
