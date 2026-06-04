@@ -267,6 +267,17 @@ const seedData: AppData = {
   ],
   guides: [
     {
+      id: "g-2",
+      title: "Video AI dễ thương khởi động đầu giờ",
+      content:
+        "Video giúp tạo không khí vui nhộn đầu giờ học với các nhân vật AI dễ thương, nhạc sôi nổi. Giáo viên có thể tải về để dùng khi khởi động tiết học.",
+      imageUrl: "https://images.unsplash.com/photo-1617042375876-a13e36732a04?auto=format&fit=crop&w=1200&q=80",
+      linkUrl: "https://drive.google.com/drive/folders/1mqKYoE7h90gFlC5yKK3Hg1Rc8zVPQgJL",
+      linkLabel: "Tải về",
+      author: "Nguyễn Đức",
+      createdAt: "2026-06-05T08:00:00.000Z",
+    },
+    {
       id: "g-1",
       title: "Gợi ý dùng AI để soạn câu hỏi đọc hiểu",
       content:
@@ -382,12 +393,15 @@ function normalizeData(data: AppData): AppData {
   const digitalApps = [...savedDigitalApps, ...seedData.digitalApps.filter((app) => !savedDigitalAppIds.has(app.id))]
     .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
     .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
+  const savedGuides = (data.guides ?? seedData.guides).map((guide) => ({ ...guide, imageUrl: guide.imageUrl ?? "" }));
+  const savedGuideIds = new Set(savedGuides.map((guide) => guide.id));
+  const guides = [...savedGuides, ...seedData.guides.filter((guide) => !savedGuideIds.has(guide.id))];
 
   return {
     ...data,
     teachers: normalizedTeachers,
     loginStats: data.loginStats ?? [],
-    guides: (data.guides ?? seedData.guides).map((guide) => ({ ...guide, imageUrl: guide.imageUrl ?? "" })),
+    guides,
     digitalApps,
     resources: data.resources.map((resource) => ({
       ...resource,
