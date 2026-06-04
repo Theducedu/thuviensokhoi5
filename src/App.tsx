@@ -83,6 +83,7 @@ type Guide = {
   id: string;
   title: string;
   content: string;
+  imageUrl: string;
   linkUrl: string;
   linkLabel: string;
   author: string;
@@ -150,6 +151,8 @@ const resourceTypes: Record<ResourceType, string> = {
 const storageKey = "khoi5-library-data";
 const sessionKey = "khoi5-library-user";
 const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
+const defaultGuideThumbnail =
+  "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80";
 
 const today = new Date().toISOString();
 
@@ -260,6 +263,7 @@ const seedData: AppData = {
       title: "Gợi ý dùng AI để soạn câu hỏi đọc hiểu",
       content:
         "Chia sẻ cách viết yêu cầu rõ ràng để AI hỗ trợ tạo câu hỏi theo mức độ nhận biết, thông hiểu và vận dụng. Giáo viên cần đọc lại, chỉnh ngữ liệu và đáp án trước khi sử dụng.",
+      imageUrl: defaultGuideThumbnail,
       linkUrl: "https://chat.openai.com",
       linkLabel: "Mở công cụ AI",
       author: "Ban quản trị",
@@ -277,6 +281,17 @@ const seedData: AppData = {
       thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg",
       author: "Ban quản trị",
       createdAt: "2026-06-04T08:00:00.000Z",
+    },
+    {
+      id: "d-4",
+      title: "Bản đồ số Việt Nam",
+      category: "Mô phỏng",
+      subject: "Lịch sử - Địa lý",
+      description: "Bản đồ tương tác 34 tỉnh thành Việt Nam sau sáp nhập, hỗ trợ khám phá thông tin địa phương.",
+      appUrl: "https://giaoviencn.io.vn/bandoso/vietnam-map-new.html",
+      thumbnailUrl: "/banner-dashboard.jpg",
+      author: "Ban quản trị",
+      createdAt: "2026-06-05T08:00:00.000Z",
     },
   ],
 };
@@ -354,7 +369,9 @@ function normalizeData(data: AppData): AppData {
         },
         ...teachers,
       ];
-  const digitalApps = (data.digitalApps ?? seedData.digitalApps)
+  const savedDigitalApps = (data.digitalApps ?? seedData.digitalApps).filter((app) => !removedDefaultDigitalAppIds.has(app.id));
+  const savedDigitalAppIds = new Set(savedDigitalApps.map((app) => app.id));
+  const digitalApps = [...savedDigitalApps, ...seedData.digitalApps.filter((app) => !savedDigitalAppIds.has(app.id))]
     .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
     .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
 
@@ -362,7 +379,7 @@ function normalizeData(data: AppData): AppData {
     ...data,
     teachers: normalizedTeachers,
     loginStats: data.loginStats ?? [],
-    guides: data.guides ?? seedData.guides,
+    guides: (data.guides ?? seedData.guides).map((guide) => ({ ...guide, imageUrl: guide.imageUrl ?? "" })),
     digitalApps,
     resources: data.resources.map((resource) => ({
       ...resource,
@@ -534,11 +551,44 @@ function useHoverSound(enabled: boolean) {
   }, [enabled]);
 }
 
-function fileToDataUrl(file: File) {
+const maxNewsImageBytes = 700 * 1024;
+
+function imageFileToCompressedDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
+    const image = new Image();
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
+
     reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      image.onload = () => {
+        const maxSide = 1400;
+        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Không thể xử lý ảnh trên trình duyệt này."));
+          return;
+        }
+
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42]) {
+          const dataUrl = canvas.toDataURL("image/jpeg", quality);
+          if (dataUrl.length <= maxNewsImageBytes) {
+            resolve(dataUrl);
+            return;
+          }
+        }
+
+        reject(new Error("Ảnh vẫn quá lớn sau khi nén. Vui lòng chọn ảnh nhỏ hơn hoặc dán link ảnh online."));
+      };
+      image.onerror = () => reject(new Error("Không đọc được file ảnh."));
+      image.src = String(reader.result);
+    };
+
     reader.readAsDataURL(file);
   });
 }
@@ -719,6 +769,7 @@ export default function App() {
           id: String(item.id || snapshot.id),
           title: String(item.title || ""),
           content: String(item.content || ""),
+          imageUrl: String(item.imageUrl || ""),
           linkUrl: String(item.linkUrl || ""),
           linkLabel: String(item.linkLabel || "Mở liên kết"),
           author: String(item.author || "Ban quản trị"),
@@ -1118,12 +1169,23 @@ export default function App() {
   const addNews = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || user.role !== "admin") return;
+    if (!db) {
+      window.alert("Chưa kết nối được Firestore nên ảnh không thể lưu cho giáo viên xem. Vui lòng kiểm tra cấu hình Firebase.");
+      return;
+    }
 
     const form = new FormData(event.currentTarget);
     const imageFile = form.get("imageFile");
-    const imageUrl = imageFile instanceof File && imageFile.size > 0
-      ? await fileToDataUrl(imageFile)
-      : String(form.get("imageUrl") || "");
+    let imageUrl = "";
+
+    try {
+      imageUrl = imageFile instanceof File && imageFile.size > 0
+        ? await imageFileToCompressedDataUrl(imageFile)
+        : String(form.get("imageUrl") || "");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Không xử lý được ảnh. Vui lòng thử ảnh khác.");
+      return;
+    }
 
     if (!imageUrl) return;
 
@@ -1137,9 +1199,14 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-    setAndSaveData({ ...data, news: [next, ...data.news] });
-    await persistContentItem("news", next);
-    event.currentTarget.reset();
+    try {
+      await persistContentItem("news", next);
+      setAndSaveData({ ...data, news: [next, ...data.news] });
+      event.currentTarget.reset();
+    } catch (error) {
+      console.error("Không lưu được ảnh hoạt động lên Firestore:", error);
+      window.alert("Ảnh chưa đồng bộ được lên hệ thống chung. Vui lòng kiểm tra Rules, tài khoản admin, hoặc dùng ảnh nhỏ hơn/link ảnh online.");
+    }
   };
 
   const deleteNews = (id: string) => {
@@ -1165,19 +1232,36 @@ export default function App() {
     if (!user || user.role !== "admin") return;
 
     const form = new FormData(event.currentTarget);
+    const imageFile = form.get("imageFile");
+    let imageUrl = "";
+
+    try {
+      imageUrl = imageFile instanceof File && imageFile.size > 0
+        ? await imageFileToCompressedDataUrl(imageFile)
+        : String(form.get("imageUrl") || "");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Không xử lý được ảnh thumbnail. Vui lòng thử ảnh khác.");
+      return;
+    }
+
     const next: Guide = {
       id: createId("g"),
       title: String(form.get("title") || ""),
       content: String(form.get("content") || ""),
+      imageUrl,
       linkUrl: String(form.get("linkUrl") || ""),
       linkLabel: String(form.get("linkLabel") || "Mở liên kết"),
       author: user.name,
       createdAt: new Date().toISOString(),
     };
 
-    setAndSaveData({ ...data, guides: [next, ...data.guides] });
-    await persistContentItem("guides", next);
-    event.currentTarget.reset();
+    try {
+      await persistContentItem("guides", next);
+      setAndSaveData({ ...data, guides: [next, ...data.guides] });
+      event.currentTarget.reset();
+    } catch {
+      window.alert("Bài chưa đồng bộ được lên hệ thống chung. Vui lòng dùng ảnh nhỏ hơn hoặc dán link ảnh online.");
+    }
   };
 
   const deleteGuide = (id: string) => {
@@ -1602,6 +1686,16 @@ export default function App() {
                 </label>
                 <div className="form-grid">
                   <label>
+                    Ảnh thumbnail
+                    <input name="imageFile" type="file" accept="image/*" />
+                  </label>
+                  <label>
+                    Link ảnh thumbnail
+                    <input name="imageUrl" type="url" placeholder="Hoặc dán link ảnh" />
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
                     Tên link
                     <input name="linkLabel" placeholder="Ví dụ: Xem video hướng dẫn" />
                   </label>
@@ -1623,6 +1717,7 @@ export default function App() {
               ) : (
                 data.guides.map((guide) => (
                   <article className="guide-card" key={guide.id}>
+                    <img className="guide-card-thumbnail" src={guide.imageUrl || defaultGuideThumbnail} alt={guide.title} />
                     <div className="guide-card-head">
                       <span className="guide-icon">
                         <Lightbulb size={20} />

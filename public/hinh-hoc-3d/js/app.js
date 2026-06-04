@@ -206,7 +206,9 @@ class App {
         if (slider) slider.value = value;
         if (display) display.textContent = Math.round(value) + '%';
 
-        if (this.currentShape && typeof this.currentShape.setUnfoldProgress === 'function') {
+        if (this.currentShapeType === 'cylinder') {
+            this.updateIframeParams({ unfoldProgress: value });
+        } else if (this.currentShape && typeof this.currentShape.setUnfoldProgress === 'function') {
             this.currentShape.setUnfoldProgress(value / 100);
         }
     }
@@ -301,18 +303,53 @@ class App {
         const nameOverlay = document.getElementById('shape-name-overlay');
         if (nameOverlay) nameOverlay.textContent = shapeName;
 
+        const iframe = document.getElementById('hinhtru3d-iframe');
         const canvas = document.getElementById('canvas3d');
         const canvasOverlays = document.querySelectorAll('.shape-name-overlay, .canvas-actions, .canvas-hint');
 
-        if (canvas) canvas.style.display = 'block';
-        canvasOverlays.forEach(el => el.style.display = '');
+        if (shapeType === 'cylinder') {
+            iframe?.classList.remove('hidden');
+            if (canvas) canvas.style.display = 'none';
+            canvasOverlays.forEach(el => el.style.display = 'none');
 
-        this.loadShape(shapeType);
+            if (this.currentShape) {
+                this.currentShape.dispose();
+                this.currentShape = null;
+            }
+
+            this.sendToIframe({ type: 'HIDE_CONTROL_PANEL' });
+            this.updateIframeParams({
+                unfoldProgress: this.unfoldProgress,
+                radius: parseFloat(document.getElementById('control-radius')?.value || 2),
+                height: parseFloat(document.getElementById('control-height')?.value || 4),
+                opacity: parseFloat(document.getElementById('control-opacity')?.value || 85)
+            });
+        } else {
+            iframe?.classList.add('hidden');
+            if (canvas) canvas.style.display = 'block';
+            canvasOverlays.forEach(el => el.style.display = '');
+
+            this.loadShape(shapeType);
+        }
 
         // Render dynamic parameters for this shape (always)
         this.renderDynamicParams(shapeType);
 
         this.updateLessonContent();
+    }
+
+    sendToIframe(message) {
+        const iframe = document.getElementById('hinhtru3d-iframe');
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(message, '*');
+        }
+    }
+
+    updateIframeParams(params) {
+        this.sendToIframe({
+            type: 'UPDATE_PARAMS',
+            ...params
+        });
     }
 
     renderDynamicParams(shapeType) {
@@ -371,13 +408,33 @@ class App {
                     const value = parseFloat(e.target.value);
                     valueDisplay.textContent = `${value} ${param.unit}`;
 
-                    if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
+                    if (this.currentShapeType === 'cylinder') {
+                        this.updateIframeParams({ [param.id]: value });
+                    } else if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
                         this.currentShape.handleControl(param.id, value);
                     }
                     this.updateStats();
                 });
             }
         });
+
+        if (shapeType === 'cylinder') {
+            const unfoldSlider = document.getElementById('control-unfold');
+            if (unfoldSlider) {
+                unfoldSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.updateIframeParams({ unfoldProgress: value });
+                });
+            }
+
+            const opacitySlider = document.getElementById('control-opacity');
+            if (opacitySlider) {
+                opacitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.updateIframeParams({ opacity: value });
+                });
+            }
+        }
     }
 
     loadShape(shapeType) {

@@ -1265,6 +1265,15 @@ textarea:focus {
   box-shadow: 0 14px 32px rgba(28, 45, 40, 0.06);
 }
 
+.guide-card-thumbnail {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(28, 45, 40, 0.12);
+}
+
 .guide-card-head {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
