@@ -451,8 +451,8 @@ export default function App() {
   const [data, setData] = useState<AppData>(() => loadData());
   const [user, setUser] = useState<CurrentUser | null>(() => loadUser());
   const [view, setView] = useState<View>("dashboard");
-  const [loginEmail, setLoginEmail] = useState("admin@khoi5.edu.vn");
-  const [loginCode, setLoginCode] = useState("ADMIN-2026");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginCode, setLoginCode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [verifiedGoogleEmail, setVerifiedGoogleEmail] = useState("");
   const [googleAuthMessage, setGoogleAuthMessage] = useState("");
@@ -568,8 +568,9 @@ export default function App() {
       }
 
       setLoginEmail(googleUser.email);
+      setLoginCode("");
       setVerifiedGoogleEmail(googleUser.email);
-      setGoogleAuthMessage(`Đã xác minh Google: ${googleUser.email}`);
+      setGoogleAuthMessage("Đã xác minh Google thành công. Nhập mã giáo viên để hoàn tất.");
     } catch {
       setLoginError("Không đăng nhập Google được. Kiểm tra Firebase Auth và domain đã cấp quyền.");
     } finally {
@@ -821,10 +822,6 @@ export default function App() {
               Xác thực mã
             </button>
           </form>
-          <div className="demo-access">
-            <span>Demo admin: admin@khoi5.edu.vn / ADMIN-2026</span>
-            <span>Demo GV: lan@khoi5.edu.vn / GV5-LAN-2026</span>
-          </div>
         </section>
       </main>
     );
@@ -1616,10 +1613,6 @@ export default function App() {
                 </button>
               </div>
             </form>
-            <div className="demo-access">
-              <span>Demo admin: admin@khoi5.edu.vn / ADMIN-2026</span>
-              <span>Demo GV: lan@khoi5.edu.vn / GV5-LAN-2026</span>
-            </div>
           </section>
         </div>
       )}
