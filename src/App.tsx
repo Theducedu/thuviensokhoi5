@@ -43,7 +43,7 @@ import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 type Role = "viewer" | "teacher" | "admin";
 type View = "dashboard" | "resources" | "news" | "contribute" | "guides" | "digital" | "admin";
 type ResourceStatus = "approved" | "pending" | "rejected";
-type ResourceType = "lesson" | "ppt";
+type ResourceType = "lesson" | "ppt" | "ebook";
 
 type Teacher = {
   id: string;
@@ -153,6 +153,7 @@ const dashboardSubjectCards = [...subjects, ebookSubjectLabel];
 const resourceTypes: Record<ResourceType, string> = {
   lesson: "Giáo án",
   ppt: "PPT",
+  ebook: "Sách điện tử",
 };
 
 const digitalCategories: DigitalApp["category"][] = [
@@ -199,10 +200,12 @@ function getYouTubeEmbedUrl(url: string) {
 }
 
 function normalizeResourceType(type: unknown): ResourceType {
+  if (type === "ebook" || type === "book") return "ebook";
   return type === "ppt" ? "ppt" : "lesson";
 }
 
 function isEbookResource(resource: Resource) {
+  if (resource.type === "ebook") return true;
   const searchable = `${resource.title} ${resource.category} ${resource.description}`.toLowerCase();
   return searchable.includes("sách điện tử") || searchable.includes("ebook") || searchable.includes("e-book");
 }
@@ -1861,6 +1864,9 @@ export default function App() {
                 <button className={typeFilter === "ppt" ? "selected" : ""} onClick={() => setTypeFilter("ppt")}>
                   PPT
                 </button>
+                <button className={typeFilter === "ebook" ? "selected" : ""} onClick={() => setTypeFilter("ebook")}>
+                  Sách điện tử
+                </button>
               </div>
             </section>
 
@@ -1950,6 +1956,7 @@ export default function App() {
                   <select name="type" defaultValue="lesson">
                     <option value="lesson">Giáo án</option>
                     <option value="ppt">PPT</option>
+                    <option value="ebook">Sách điện tử</option>
                   </select>
                 </label>
               </div>
@@ -2330,6 +2337,7 @@ export default function App() {
                             <select name="type" defaultValue={item.type} aria-label="Loại tài liệu">
                               <option value="lesson">Giáo án</option>
                               <option value="ppt">PPT</option>
+                              <option value="ebook">Sách điện tử</option>
                             </select>
                           </div>
                           <div className="form-grid">
@@ -2399,6 +2407,7 @@ export default function App() {
                     <select name="type" defaultValue="lesson">
                       <option value="lesson">Giáo án</option>
                       <option value="ppt">PPT</option>
+                      <option value="ebook">Sách điện tử</option>
                     </select>
                   </div>
                   <div className="form-grid">
@@ -2623,6 +2632,7 @@ export default function App() {
                           <select name="type" defaultValue={item.type} aria-label="Loại tài liệu">
                             <option value="lesson">Giáo án</option>
                             <option value="ppt">PPT</option>
+                            <option value="ebook">Sách điện tử</option>
                           </select>
                         </div>
                         <div className="form-grid">
