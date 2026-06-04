@@ -1645,6 +1645,11 @@ td span {
   --subject-soft: #fdf2f8;
 }
 
+.subject-ebook {
+  --subject-main: #0f766e;
+  --subject-soft: #f0fdfa;
+}
+
 .subject-experience {
   --subject-main: #0f766e;
   --subject-soft: #ecfdfa;

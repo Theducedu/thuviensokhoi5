@@ -147,6 +147,8 @@ const subjects = [
   "Tiếng Anh",
   "Hoạt động trải nghiệm",
 ];
+const ebookSubjectLabel = "Sách điện tử các môn";
+const dashboardSubjectCards = [...subjects, ebookSubjectLabel];
 
 const resourceTypes: Record<ResourceType, string> = {
   lesson: "Giáo án",
@@ -198,6 +200,11 @@ function getYouTubeEmbedUrl(url: string) {
 
 function normalizeResourceType(type: unknown): ResourceType {
   return type === "ppt" ? "ppt" : "lesson";
+}
+
+function isEbookResource(resource: Resource) {
+  const searchable = `${resource.title} ${resource.category} ${resource.description}`.toLowerCase();
+  return searchable.includes("sách điện tử") || searchable.includes("ebook") || searchable.includes("e-book");
 }
 
 const today = new Date().toISOString();
@@ -537,6 +544,7 @@ function toIsoDate(value: unknown) {
 }
 
 function subjectClass(subject: string) {
+  if (subject.includes("Sách điện tử")) return "subject-ebook";
   if (subject.includes("Toán")) return "subject-math";
   if (subject.includes("Tiếng Việt")) return "subject-vietnamese";
   if (subject.includes("Khoa học")) return "subject-science";
@@ -971,8 +979,9 @@ export default function App() {
     pendingResources.length,
   ]);
 
+  const ebookResources = approvedResources.filter(isEbookResource);
   const filteredResources = approvedResources.filter((item) => {
-    const matchesQuery = `${item.title} ${item.description} ${item.contributor}`
+    const matchesQuery = `${item.title} ${item.subject} ${item.category} ${item.week} ${item.description} ${item.contributor}`
       .toLowerCase()
       .includes(query.toLowerCase());
     const matchesSubject =
@@ -1715,7 +1724,9 @@ export default function App() {
                   className="text-button"
                   onClick={() => {
                     if (!requireGoogleAccess("resources")) return;
+                    setQuery("");
                     setSubjectFilter("Tất cả");
+                    setTypeFilter("all");
                     setView("resources");
                   }}
                 >
@@ -1724,10 +1735,12 @@ export default function App() {
                 </button>
               </div>
               <div className="subject-strip featured-subjects">
-                {subjects.map((subject) => {
+                {dashboardSubjectCards.map((subject) => {
                   const count =
                     subject === "Tất cả các môn"
                       ? approvedResources.length
+                      : subject === ebookSubjectLabel
+                        ? ebookResources.length
                       : approvedResources.filter((item) => item.subject === subject).length;
                   return (
                     <button
@@ -1735,7 +1748,14 @@ export default function App() {
                       className={subjectClass(subject)}
                       onClick={() => {
                         if (!requireGoogleAccess("resources")) return;
-                        setSubjectFilter(subject === "Tất cả các môn" ? "Tất cả" : subject);
+                        setTypeFilter("all");
+                        if (subject === ebookSubjectLabel) {
+                          setSubjectFilter("Tất cả");
+                          setQuery("sách điện tử");
+                        } else {
+                          setQuery("");
+                          setSubjectFilter(subject === "Tất cả các môn" ? "Tất cả" : subject);
+                        }
                         setView("resources");
                       }}
                     >
