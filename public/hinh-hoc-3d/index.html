@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Hình Học 3D | NTĐ- GV yêu CN</title>
+    <meta name="description"
+        content="Ứng dụng học hình học 3D tương tác - Hình lập phương, hộp chữ nhật, chóp tứ giác, hình cầu, hình trụ">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Sidebar - Hinhtru3d Style -->
+            <aside class="sidebar">
+                <!-- Header -->
+                <div class="sidebar-header">
+                    <span class="logo">🎓</span>
+                    <span class="title">Học Hình Học</span>
+                    <button class="settings-btn">⚙️</button>
+                </div>
+
+                <!-- Shape Icons Grid (3x2) -->
+                <div class="shape-grid">
+                    <button class="shape-icon-btn active" data-shape="cube" title="Lập phương">
+                        <span>🧊</span>
+                        <small>LP</small>
+                    </button>
+                    <button class="shape-icon-btn" data-shape="rectangular-prism" title="Hộp chữ nhật">
+                        <span>📦</span>
+                        <small>HỘP</small>
+                    </button>
+                    <button class="shape-icon-btn" data-shape="pyramid" title="Chóp tứ giác">
+                        <span>🔺</span>
+                        <small>CHÓP</small>
+                    </button>
+                    <button class="shape-icon-btn" data-shape="sphere" title="Hình cầu">
+                        <span>⚪</span>
+                        <small>CẦU</small>
+                    </button>
+                    <button class="shape-icon-btn" data-shape="cylinder" title="Hình trụ">
+                        <span>🔵</span>
+                        <small>TRỤ</small>
+                    </button>
+                    <button class="shape-icon-btn" data-shape="cone" title="Hình nón" disabled>
+                        <span>🔻</span>
+                        <small>NÓN</small>
+                    </button>
+                </div>
+
+                <!-- Shape Title with Subtitle -->
+                <div class="shape-title-section">
+                    <h1 class="shape-title">
+                        <span class="title-icon">💠</span>
+                        <span id="current-shape-name">HÌNH LẬP PHƯƠNG</span>
+                    </h1>
+                    <p class="shape-subtitle">Mô phỏng 3D tương tác</p>
+                </div>
+
+                <!-- THÀNH PHẦN Section -->
+                <section class="panel-section">
+                    <h3 class="section-title">THÀNH PHẦN</h3>
+                    <div class="component-buttons">
+                        <button class="component-btn active" id="toggle-vertices">
+                            <span class="dot vertex"></span> ĐỈNH
+                        </button>
+                        <button class="component-btn active" id="toggle-edges">
+                            <span class="dot edge"></span> CẠNH
+                        </button>
+                        <button class="component-btn active" id="toggle-faces">
+                            <span class="dot face"></span> MẶT
+                        </button>
+                    </div>
+                </section>
+
+                <!-- CHẾ ĐỘ Section -->
+                <section class="panel-section">
+                    <h3 class="section-title">CHẾ ĐỘ</h3>
+                    <div class="mode-buttons">
+                        <button class="mode-btn explore active" id="btn-explore">
+                            <span class="mode-icon">🔍</span> KHÁM PHÁ
+                        </button>
+                        <button class="mode-btn volume" id="btn-volume">
+                            <span class="mode-icon">📦</span> THỂ TÍCH
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ĐIỀU CHỈNH Section -->
+                <section class="panel-section adjustments-section">
+                    <h3 class="section-title">ĐIỀU CHỈNH</h3>
+
+                    <!-- Mở khối / Trải hình -->
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <label class="slider-label">🌀 MỞ KHỐI / TRẢI HÌNH</label>
+                            <span class="slider-value" id="value-unfold">0%</span>
+                        </div>
+                        <input type="range" class="slider-range" id="control-unfold" min="0" max="100" step="1"
+                            value="0">
+                        <div class="slider-bounds">
+                            <span>Đóng</span>
+                            <span>Mở</span>
+                        </div>
+
+                        <!-- Auto Run Controls -->
+                        <div class="auto-run-box">
+                            <button class="auto-btn" id="btn-auto-unfold">
+                                <span>▶</span> TỰ ĐỘNG
+                            </button>
+                            <div class="speed-control">
+                                <span class="speed-label">Tốc độ: <span id="speed-value">1.0</span>x</span>
+                                <input type="range" class="speed-slider" id="control-speed" min="0.5" max="3" step="0.1"
+                                    value="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Parameters Container -->
+                    <div id="dynamic-params-container">
+                        <!-- Tham số động sẽ được render bởi JavaScript -->
+                    </div>
+
+                    <!-- Độ trong suốt (common) -->
+                    <div class="slider-container">
+                        <div class="slider-header">
+                            <label class="slider-label">👁️ ĐỘ TRONG SUỐT</label>
+                            <span class="slider-value" id="value-opacity">0.85</span>
+                        </div>
+                        <input type="range" class="slider-range" id="control-opacity" min="20" max="100" step="1"
+                            value="85">
+                    </div>
+                </section>
+
+                <!-- QR Zalo Section -->
+                <section class="panel-section qr-sidebar-section">
+                    <h3 class="section-title">CỘNG ĐỒNG ZALO</h3>
+                    <div class="qr-sidebar-box">
+                        <img src="images/qr-zalo.png" alt="QR Zalo" class="qr-sidebar-img">
+                        <p>Quét để tham gia nhóm</p>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- 3D Canvas -->
+            <div class="canvas-container">
+                <!-- Shape name overlay -->
+                <div class="shape-name-overlay" id="shape-name-overlay">HÌNH LẬP PHƯƠNG</div>
+
+                <canvas id="canvas3d"></canvas>
+
+                <!-- Iframe cho hinhtru3d 3D Cylinder -->
+                <iframe id="hinhtru3d-iframe" src="hinhtru3d/dist/index.html" class="hinhtru3d-iframe hidden"></iframe>
+
+                <!-- Action Buttons -->
+                <div class="canvas-actions">
+                    <button id="btn-pause" class="canvas-btn" title="Tạm dừng">⏸️</button>
+                    <button id="btn-reset" class="canvas-btn" title="Đặt lại">🔄</button>
+                    <button id="btn-fullscreen" class="canvas-btn" title="Toàn màn hình">👁️</button>
+                </div>
+
+
+            </div>
+        </main>
+
+        <!-- Bottom Status Bar - Hinhtru3d Style -->
+        <footer class="bottom-status" id="bottom-stats">
+            <!-- Hint - left -->
+            <span class="status-hint">🖱️ Kéo để xoay • Cuộn để zoom</span>
+
+            <!-- Credit - center -->
+            <div class="status-credit">
+                <span>💙 Phát triển bởi thầy Thế Đức - 0975509490</span>
+                <button class="qr-btn" id="btn-show-qr" title="Nhóm Zalo">📱</button>
+            </div>
+
+            <!-- Fullscreen button - right -->
+            <button class="fullscreen-btn" id="btn-fullscreen-footer" title="Toàn màn hình">⛶</button>
+        </footer>
+
+        <!-- QR Code Modal -->
+        <div class="qr-modal hidden" id="qr-modal">
+            <div class="qr-modal-content">
+                <button class="qr-close-btn" id="btn-close-qr">✕</button>
+                <h3>Cộng đồng Zalo</h3>
+                <img src="images/qr-zalo.png" alt="QR Code Zalo" class="qr-image">
+                <p>Quét mã QR bằng Zalo để tham gia</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- App Scripts -->
+    <script src="js/utils/calculations.js"></script>
+    <script src="js/shapes/cube.js"></script>
+    <script src="js/shapes/rectangular-prism.js"></script>
+    <script src="js/shapes/pyramid.js"></script>
+    <script src="js/shapes/sphere.js"></script>
+    <script src="js/shapes/cylinder.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

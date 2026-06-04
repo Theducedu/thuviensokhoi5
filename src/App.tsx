@@ -278,6 +278,18 @@ const seedData: AppData = {
       createdAt: "2026-06-04T08:00:00.000Z",
     },
     {
+      id: "d-3",
+      title: "Kho hình học 3D",
+      category: "Hình học 3D",
+      subject: "Tất cả các môn",
+      description: "Kho mô hình hình học 3D trực quan, hỗ trợ học sinh quan sát và tương tác với các khối hình.",
+      appUrl: "/hinh-hoc-3d/index.html",
+      thumbnailUrl:
+        "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=900&q=80",
+      author: "Ban quản trị",
+      createdAt: "2026-06-04T08:00:00.000Z",
+    },
+    {
       id: "d-2",
       title: "Trò chơi luyện từ vựng",
       category: "Game học tập",
@@ -328,13 +340,17 @@ function normalizeData(data: AppData): AppData {
         },
         ...teachers,
       ];
+  const digitalApps = data.digitalApps ?? seedData.digitalApps;
+  const requiredDigitalApps = seedData.digitalApps.filter(
+    (seedApp) => seedApp.id === "d-3" && !digitalApps.some((app) => app.id === seedApp.id),
+  );
 
   return {
     ...data,
     teachers: normalizedTeachers,
     loginStats: data.loginStats ?? [],
     guides: data.guides ?? seedData.guides,
-    digitalApps: data.digitalApps ?? seedData.digitalApps,
+    digitalApps: [...requiredDigitalApps, ...digitalApps],
     resources: data.resources.map((resource) => ({
       ...resource,
       title: titleUpdates[resource.title] ?? resource.title,

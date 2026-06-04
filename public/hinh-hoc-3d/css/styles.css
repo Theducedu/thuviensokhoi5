@@ -1,0 +1,1307 @@
+/* ==========================================
+   HỌC HÌNH HỌC 3D - HINHTRU3D STYLE
+   NTĐ- GV yêu CN
+   ========================================== */
+
+/* CSS Variables - Hinhtru3d Dark Blue Theme */
+:root {
+    --bg-primary: #0a1628;
+    --bg-secondary: #0d1f37;
+    --bg-card: rgba(10, 25, 47, 0.95);
+    --bg-section: rgba(255, 255, 255, 0.02);
+
+    --accent-cyan: #4dd0e1;
+    --accent-blue: #42a5f5;
+    --accent-purple: #7c4dff;
+    --accent-green: #66bb6a;
+    --accent-orange: #ff9800;
+    --accent-red: #ef5350;
+
+    --text-primary: #ffffff;
+    --text-secondary: #b0bec5;
+    --text-muted: #78909c;
+
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-accent: rgba(77, 208, 225, 0.3);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-full: 50px;
+
+    --transition: all 0.25s ease;
+    --shadow-glow: 0 0 20px rgba(77, 208, 225, 0.3);
+}
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* App Container */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-primary);
+}
+
+/* Main Content */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ==========================================
+   SIDEBAR - Hinhtru3d Style
+   ========================================== */
+.sidebar {
+    width: 240px;
+    background: linear-gradient(180deg, rgba(10, 25, 47, 0.95) 0%, rgba(13, 31, 55, 0.98) 100%);
+    border-right: 1px solid var(--border-accent);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 0.75rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-cyan) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(77, 208, 225, 0.3);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(77, 208, 225, 0.5);
+}
+
+/* Sidebar Header */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-header .logo {
+    font-size: 1.25rem;
+}
+
+.sidebar-header .title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+    text-shadow: 0 0 20px rgba(77, 208, 225, 0.5);
+}
+
+.sidebar-header .settings-icon {
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: var(--transition);
+}
+
+.sidebar-header .settings-icon:hover {
+    opacity: 1;
+    color: var(--accent-cyan);
+}
+
+/* ==========================================
+   SHAPE GRID - Keep original layout
+   ========================================== */
+.shape-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.shape-icon-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.shape-icon-btn span {
+    font-size: 1.5rem;
+}
+
+.shape-icon-btn small {
+    font-size: 0.6rem;
+    margin-top: 0.25rem;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.shape-icon-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+    transform: translateY(-2px);
+}
+
+.shape-icon-btn.active {
+    background: rgba(77, 208, 225, 0.15);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(77, 208, 225, 0.2);
+}
+
+.shape-icon-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================
+   SHAPE TITLE SECTION - Hinhtru3d Style
+   ========================================== */
+.shape-title-section {
+    text-align: center;
+    padding: 0.75rem;
+    background: var(--bg-section);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(77, 208, 225, 0.2);
+}
+
+.shape-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+    text-shadow: 0 0 20px rgba(77, 208, 225, 0.5);
+}
+
+.shape-title .title-icon {
+    font-size: 1rem;
+}
+
+.shape-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================
+   PANEL SECTIONS
+   ========================================== */
+.panel-section {
+    background: var(--bg-section);
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem 0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* ==========================================
+   COMPONENT BUTTONS (grid 2x2) - Hinhtru3d Style
+   ========================================== */
+.component-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+}
+
+.component-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-transform: uppercase;
+    height: 32px;
+}
+
+.component-btn .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+/* Colored dots for each component */
+.component-btn .dot.vertex {
+    background: var(--accent-red);
+}
+
+.component-btn .dot.edge {
+    background: var(--accent-blue);
+}
+
+.component-btn .dot.face {
+    background: var(--accent-orange);
+}
+
+.component-btn .dot.label {
+    background: var(--accent-green);
+}
+
+.component-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+}
+
+.component-btn.active {
+    background: rgba(77, 208, 225, 0.1);
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
+}
+
+.component-btn.active .dot {
+    box-shadow: 0 0 8px currentColor;
+}
+
+/* ==========================================
+   MODE BUTTONS (KHÁM PHÁ, THỂ TÍCH) - Hinhtru3d Style
+   ========================================== */
+.mode-buttons {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.mode-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-transform: uppercase;
+    height: 32px;
+}
+
+.mode-btn .mode-icon {
+    font-size: 0.8rem;
+}
+
+.mode-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+}
+
+.mode-btn.explore.active {
+    background: rgba(255, 152, 0, 0.15);
+    border-color: var(--accent-orange);
+    color: var(--accent-orange);
+}
+
+.mode-btn.volume.active {
+    background: rgba(102, 187, 106, 0.15);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+/* ==========================================
+   MODE BUTTONS (KHÁM PHÁ, THỂ TÍCH)
+   ========================================== */
+.mode-row {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.mode-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: var(--transition);
+    text-transform: uppercase;
+    height: 32px;
+}
+
+.mode-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+}
+
+#btn-explore.active {
+    background: rgba(255, 152, 0, 0.15);
+    border-color: var(--accent-orange);
+    color: var(--accent-orange);
+}
+
+#btn-volume.active {
+    background: rgba(102, 187, 106, 0.15);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+}
+
+/* ==========================================
+   CONTROLS SECTION
+   ========================================== */
+.controls-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.control-item,
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.control-row,
+.control-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.control-row span:last-child,
+.control-value {
+    color: var(--accent-cyan);
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+/* ==========================================
+   SLIDERS - Hinhtru3d Style
+   ========================================== */
+input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: var(--shadow-glow);
+    transition: var(--transition);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-glow);
+}
+
+/* Slider bounds */
+.slider-bounds {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 0.125rem;
+}
+
+/* ==========================================
+   SLIDER CONTAINER - Hinhtru3d Style
+   ========================================== */
+.slider-container {
+    margin-bottom: 0.75rem;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.slider-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.slider-value {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(77, 208, 225, 0.2);
+    border-radius: 4px;
+    color: var(--accent-cyan);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    text-align: center;
+}
+
+.slider-range {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.slider-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(77, 208, 225, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.slider-range::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(77, 208, 225, 0.6);
+}
+
+.slider-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--accent-cyan);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(77, 208, 225, 0.4);
+}
+
+/* Auto Run Box */
+.auto-run-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.auto-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-family: inherit;
+}
+
+.auto-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.auto-btn.active {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.speed-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.speed-slider {
+    flex: 1;
+    height: 4px;
+}
+
+/* ==========================================
+   STATS SECTION - Hinhtru3d Style
+   ========================================== */
+.stats-section {
+    margin-top: auto;
+}
+
+.stats-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.stats-toggle input {
+    display: none;
+}
+
+.stats-toggle .check-icon {
+    font-size: 1rem;
+}
+
+.stats-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.stat-value strong {
+    color: var(--accent-cyan);
+    font-size: 1rem;
+    font-weight: 700;
+    text-shadow: var(--shadow-glow);
+}
+
+.stat-value small {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+}
+
+/* Dynamic params container */
+#dynamic-params-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* ==========================================
+   AUTO UNFOLD CONTROLS (Legacy - keep for compatibility)
+   ========================================== */
+.auto-unfold-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.625rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.auto-btn-row {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent-cyan);
+}
+
+.action-btn.active {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #4caf50;
+    color: #4caf50;
+}
+
+.icon-only-btn {
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.7rem;
+}
+
+.icon-only-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent-cyan);
+}
+
+.icon-only-btn.active {
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    background: rgba(77, 208, 225, 0.1);
+}
+
+.speed-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.speed-control input[type="range"] {
+    flex: 1;
+    height: 4px;
+}
+
+/* ==========================================
+   SIDEBAR STATS
+   ========================================== */
+.sidebar-stats {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stats-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.stats-toggle input {
+    display: none;
+}
+
+.stats-toggle .check {
+    width: 14px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--accent-cyan);
+    border-radius: 3px;
+    position: relative;
+    transition: var(--transition);
+}
+
+.stats-toggle input:checked+.check {
+    background: var(--accent-cyan);
+}
+
+.stats-toggle input:checked+.check::after {
+    content: "✓";
+    position: absolute;
+    top: -2px;
+    left: 1px;
+    font-size: 10px;
+    color: var(--bg-primary);
+}
+
+.stats-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stats-row .stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+}
+
+.stats-row .stat span {
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.stats-row .stat strong {
+    font-size: 1.125rem;
+    color: var(--accent-cyan);
+    text-shadow: var(--shadow-glow);
+}
+
+.stats-row .stat small {
+    color: var(--text-muted);
+    font-size: 0.6rem;
+}
+
+/* ==========================================
+   CANVAS CONTAINER
+   ========================================== */
+.canvas-container {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+}
+
+#canvas3d {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Hinhtru3d iframe styles */
+.hinhtru3d-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    z-index: 10;
+}
+
+.hinhtru3d-iframe.hidden {
+    display: none;
+}
+
+/* Shape Name Overlay */
+.shape-name-overlay {
+    position: absolute;
+    top: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.625rem 1.25rem;
+    background: rgba(10, 22, 40, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    text-shadow: 0 0 20px rgba(77, 208, 225, 0.5);
+}
+
+/* Canvas Actions */
+.canvas-actions {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.canvas-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 22, 40, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.canvas-btn:hover {
+    background: rgba(77, 208, 225, 0.2);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+}
+
+/* Canvas Hint */
+.canvas-hint {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1.25rem;
+    padding: 0.5rem 1rem;
+    background: rgba(10, 22, 40, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+/* Brand Tag */
+.brand-tag {
+    position: absolute;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(10, 22, 40, 0.85);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+/* ==========================================
+   BOTTOM STATUS BAR - Hinhtru3d Style
+   ========================================== */
+.bottom-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 50px;
+    padding: 0 1.5rem;
+    /* Glassmorphism effect */
+    background: rgba(13, 18, 31, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    /* Gradient accent border */
+    border-top: 1px solid transparent;
+    background-image:
+        linear-gradient(rgba(13, 18, 31, 0.85), rgba(13, 18, 31, 0.85)),
+        linear-gradient(90deg, #6366f1, #8b5cf6, #06b6d4);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    position: relative;
+    gap: 2rem;
+}
+
+/* Hint - left side */
+.bottom-status .status-hint {
+    position: absolute;
+    left: 1.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.bottom-status .status-hint:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Stats group */
+.bottom-status .status-stats {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.bottom-status .status-stats span {
+    white-space: nowrap;
+}
+
+.bottom-status .status-stats strong {
+    color: var(--accent-cyan);
+    font-weight: 700;
+}
+
+/* Credit - center */
+.bottom-status .status-credit {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.bottom-status .status-credit:hover {
+    color: #fbbf24;
+}
+
+/* Calculations group */
+.bottom-status .status-calculations {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.bottom-status .status-calculations span {
+    white-space: nowrap;
+}
+
+.bottom-status .status-calculations strong {
+    color: var(--accent-cyan);
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-shadow: 0 0 10px rgba(77, 208, 225, 0.4);
+}
+
+.bottom-status .status-calculations small {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.65rem;
+}
+
+/* Fullscreen button - right side */
+.bottom-status .fullscreen-btn {
+    position: absolute;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.bottom-status .fullscreen-btn:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.5);
+    color: #a5b4fc;
+    transform: scale(1.05);
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 900px) {
+    .sidebar {
+        width: 200px;
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .shape-grid {
+        gap: 0.375rem;
+    }
+
+    .shape-icon-btn {
+        padding: 0.5rem 0.25rem;
+    }
+
+    .shape-icon-btn span {
+        font-size: 1.25rem;
+    }
+
+    .toggle-btn,
+    .mode-btn {
+        height: 28px;
+        font-size: 0.6rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 180px;
+        padding: 0.5rem;
+    }
+
+    .shape-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .canvas-actions {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .canvas-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 0.875rem;
+    }
+
+    .bottom-stats {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .canvas-hint {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .main-content {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        max-height: 45vh;
+        overflow-y: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-accent);
+    }
+
+    .shape-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .canvas-container {
+        min-height: 55vh;
+    }
+}
+
+/* ==========================================
+   QR CODE MODAL
+   ========================================== */
+.qr-btn {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    opacity: 0.8;
+    transition: all 0.25s ease;
+}
+
+.qr-btn:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+.qr-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+}
+
+.qr-modal.hidden {
+    display: none;
+}
+
+.qr-modal-content {
+    background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    border: 1px solid rgba(77, 208, 225, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(77, 208, 225, 0.2);
+    max-width: 350px;
+    position: relative;
+}
+
+.qr-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+}
+
+.qr-close-btn:hover {
+    background: rgba(239, 83, 80, 0.5);
+    border-color: #ef5350;
+}
+
+.qr-modal-content h3 {
+    color: var(--accent-cyan);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    text-shadow: 0 0 10px rgba(77, 208, 225, 0.5);
+}
+
+.qr-image {
+    width: 250px;
+    height: auto;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.qr-modal-content p {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+/* QR Sidebar Section */
+.qr-sidebar-section {
+    margin-top: auto;
+}
+
+.qr-sidebar-box {
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid rgba(77, 208, 225, 0.2);
+}
+
+.qr-sidebar-img {
+    width: 100%;
+    max-width: 150px;
+    height: auto;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.qr-sidebar-box p {
+    margin: 0;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+/* ==========================================
+   HIDE IFRAME SIDEBAR - Prevent Duplicate
+   ========================================== */
+/* Hide the control panel inside hinhtru3d iframe to avoid duplicate sidebars */
+.hinhtru3d-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Target elements inside iframe - this will hide the sidebar */
+#hinhtru3d-iframe::part(panel-container),
+#hinhtru3d-iframe::part(control-panel) {
+    display: none !important;
+}
