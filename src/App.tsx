@@ -43,7 +43,7 @@ import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 type Role = "viewer" | "teacher" | "admin";
 type View = "dashboard" | "resources" | "news" | "contribute" | "guides" | "digital" | "admin";
 type ResourceStatus = "approved" | "pending" | "rejected";
-type ResourceType = "lesson" | "book";
+type ResourceType = "lesson" | "ppt";
 
 type Teacher = {
   id: string;
@@ -149,8 +149,8 @@ const subjects = [
 ];
 
 const resourceTypes: Record<ResourceType, string> = {
-  lesson: "Giáo án PPT",
-  book: "Sách tham khảo",
+  lesson: "Giáo án",
+  ppt: "PPT",
 };
 
 const digitalCategories: DigitalApp["category"][] = [
@@ -196,6 +196,10 @@ function getYouTubeEmbedUrl(url: string) {
   return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
 }
 
+function normalizeResourceType(type: unknown): ResourceType {
+  return type === "ppt" ? "ppt" : "lesson";
+}
+
 const today = new Date().toISOString();
 
 const seedData: AppData = {
@@ -235,7 +239,7 @@ const seedData: AppData = {
       id: "r-1",
       title: "Toán 5 - Phân số thập phân",
       subject: "Toán",
-      type: "lesson",
+      type: "ppt",
       category: "Bài giảng",
       week: "Tuần 3",
       contributor: "Cô Lan",
@@ -250,7 +254,7 @@ const seedData: AppData = {
       id: "r-2",
       title: "Tiếng Việt 5 - Bộ phiếu đọc hiểu học kỳ I",
       subject: "Tiếng Việt",
-      type: "book",
+      type: "lesson",
       category: "Đề ôn tập",
       week: "Học kỳ I",
       contributor: "Tổ chuyên môn",
@@ -265,7 +269,7 @@ const seedData: AppData = {
       id: "r-3",
       title: "Khoa học 5 - Năng lượng mặt trời",
       subject: "Khoa học",
-      type: "lesson",
+      type: "ppt",
       category: "STEM",
       week: "Tuần 9",
       contributor: "Thầy Minh",
@@ -476,6 +480,7 @@ function normalizeData(data: AppData): AppData {
       "resources",
       data.resources.map((resource) => ({
         ...resource,
+        type: normalizeResourceType(resource.type),
         title: titleUpdates[resource.title] ?? resource.title,
       })),
       localDeletedKeys,
@@ -835,7 +840,7 @@ export default function App() {
           id: String(item.id || snapshot.id),
           title: String(item.title || ""),
           subject: String(item.subject || subjects[0]),
-          type: item.type === "book" ? "book" : "lesson",
+          type: normalizeResourceType(item.type),
           category: String(item.category || "Tài liệu"),
           week: String(item.week || ""),
           contributor: String(item.contributor || "Ban quản trị"),
@@ -1180,7 +1185,7 @@ export default function App() {
     updateResource(id, {
       title: String(form.get("title") || ""),
       subject: String(form.get("subject") || subjects[0]),
-      type: form.get("type") as ResourceType,
+      type: normalizeResourceType(form.get("type")),
       category: String(form.get("category") || "Tài liệu"),
       week: String(form.get("week") || ""),
       driveUrl: String(form.get("driveUrl") || ""),
@@ -1209,7 +1214,7 @@ export default function App() {
       id: createId("r"),
       title: String(form.get("title") || ""),
       subject: String(form.get("subject") || subjects[0]),
-      type: form.get("type") as ResourceType,
+      type: normalizeResourceType(form.get("type")),
       category: String(form.get("category") || "Tài liệu"),
       week: String(form.get("week") || ""),
       contributor: user.name,
@@ -1225,6 +1230,36 @@ export default function App() {
     void persistContentItem("resources", next);
     event.currentTarget.reset();
     setView(user.role === "admin" ? "admin" : "resources");
+  };
+
+  const addAdminResource = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user || user.role !== "admin") return;
+
+    const form = new FormData(event.currentTarget);
+    const next: Resource = {
+      id: createId("r"),
+      title: String(form.get("title") || "Tài liệu mới"),
+      subject: String(form.get("subject") || subjects[0]),
+      type: normalizeResourceType(form.get("type")),
+      category: String(form.get("category") || "Tài liệu"),
+      week: String(form.get("week") || ""),
+      contributor: user.name,
+      driveUrl: String(form.get("driveUrl") || ""),
+      description: String(form.get("description") || "Admin sẽ cập nhật mô tả sau."),
+      status: "approved",
+      views: 0,
+      opens: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await persistContentItem("resources", next);
+      setAndSaveData({ ...data, resources: [next, ...data.resources] });
+      event.currentTarget.reset();
+    } catch {
+      window.alert("Chưa thêm được tài liệu vào thư viện. Vui lòng kiểm tra Firestore Rules và đăng nhập đúng tài khoản admin.");
+    }
   };
 
   const addTeacher = async (event: FormEvent<HTMLFormElement>) => {
@@ -1801,10 +1836,10 @@ export default function App() {
                   className={typeFilter === "lesson" ? "selected" : ""}
                   onClick={() => setTypeFilter("lesson")}
                 >
-                  PPT
+                  Giáo án
                 </button>
-                <button className={typeFilter === "book" ? "selected" : ""} onClick={() => setTypeFilter("book")}>
-                  Sách
+                <button className={typeFilter === "ppt" ? "selected" : ""} onClick={() => setTypeFilter("ppt")}>
+                  PPT
                 </button>
               </div>
             </section>
@@ -1893,8 +1928,8 @@ export default function App() {
                 <label>
                   Loại
                   <select name="type" defaultValue="lesson">
-                    <option value="lesson">Giáo án PPT</option>
-                    <option value="book">Sách tham khảo</option>
+                    <option value="lesson">Giáo án</option>
+                    <option value="ppt">PPT</option>
                   </select>
                 </label>
               </div>
@@ -2273,8 +2308,8 @@ export default function App() {
                               ))}
                             </select>
                             <select name="type" defaultValue={item.type} aria-label="Loại tài liệu">
-                              <option value="lesson">Giáo án PPT</option>
-                              <option value="book">Sách tham khảo</option>
+                              <option value="lesson">Giáo án</option>
+                              <option value="ppt">PPT</option>
                             </select>
                           </div>
                           <div className="form-grid">
@@ -2326,6 +2361,37 @@ export default function App() {
                     </article>
                   ))}
                 </div>
+              </div>
+
+              <div className="admin-panel">
+                <div className="section-heading">
+                  <h3>Thêm tài liệu thư viện</h3>
+                  <span className="pill">Đã duyệt</span>
+                </div>
+                <form className="editor-form compact" onSubmit={addAdminResource}>
+                  <input name="title" required placeholder="Tên tài liệu" />
+                  <div className="form-grid">
+                    <select name="subject" defaultValue={subjects[0]}>
+                      {subjects.map((subject) => (
+                        <option key={subject}>{subject}</option>
+                      ))}
+                    </select>
+                    <select name="type" defaultValue="lesson">
+                      <option value="lesson">Giáo án</option>
+                      <option value="ppt">PPT</option>
+                    </select>
+                  </div>
+                  <div className="form-grid">
+                    <input name="category" placeholder="Nhóm tài liệu" />
+                    <input name="week" placeholder="Tuần/Học kỳ" />
+                  </div>
+                  <input name="driveUrl" type="url" required placeholder="Link Google Drive" />
+                  <textarea name="description" rows={3} placeholder="Mô tả, ghi chú..." />
+                  <button className="primary-button" type="submit">
+                    <Plus size={18} />
+                    Thêm vào thư viện
+                  </button>
+                </form>
               </div>
 
               <div className="admin-panel">
@@ -2535,8 +2601,8 @@ export default function App() {
                             ))}
                           </select>
                           <select name="type" defaultValue={item.type} aria-label="Loại tài liệu">
-                            <option value="lesson">Giáo án PPT</option>
-                            <option value="book">Sách tham khảo</option>
+                            <option value="lesson">Giáo án</option>
+                            <option value="ppt">PPT</option>
                           </select>
                         </div>
                         <div className="form-grid">
