@@ -385,10 +385,19 @@ function mergeRemoteWithDefaults<T extends { id: string }>(
   defaults: T[],
   remoteItems: T[],
   deletedKeys: Set<string>,
+  currentItems: T[] = [],
 ) {
-  const remoteIds = new Set(remoteItems.map((item) => item.id));
-  const fallbackDefaults = defaults.filter((item) => !remoteIds.has(item.id));
-  return filterDeletedDefaults(kind, [...remoteItems, ...fallbackDefaults], deletedKeys);
+  const merged = new Map<string, T>();
+
+  remoteItems.forEach((item) => merged.set(item.id, item));
+  currentItems.forEach((item) => {
+    if (!merged.has(item.id)) merged.set(item.id, item);
+  });
+  defaults.forEach((item) => {
+    if (!merged.has(item.id)) merged.set(item.id, item);
+  });
+
+  return filterDeletedDefaults(kind, Array.from(merged.values()), deletedKeys);
 }
 
 function normalizeData(data: AppData): AppData {
@@ -863,10 +872,10 @@ export default function App() {
 
     updateAndSaveData((current) => ({
       ...current,
-      resources: mergeRemoteWithDefaults("resources", seedData.resources, remoteResources, deletedKeys),
-      news: mergeRemoteWithDefaults("news", seedData.news, remoteNews, deletedKeys),
-      guides: mergeRemoteWithDefaults("guides", seedData.guides, remoteGuides, deletedKeys),
-      digitalApps: mergeRemoteWithDefaults("digitalApps", seedData.digitalApps, remoteDigitalApps, deletedKeys),
+      resources: mergeRemoteWithDefaults("resources", seedData.resources, remoteResources, deletedKeys, current.resources),
+      news: mergeRemoteWithDefaults("news", seedData.news, remoteNews, deletedKeys, current.news),
+      guides: mergeRemoteWithDefaults("guides", seedData.guides, remoteGuides, deletedKeys, current.guides),
+      digitalApps: mergeRemoteWithDefaults("digitalApps", seedData.digitalApps, remoteDigitalApps, deletedKeys, current.digitalApps),
     }));
   };
 
