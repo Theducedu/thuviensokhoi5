@@ -809,7 +809,7 @@ export default function App() {
     if (!requireGoogleAccess(nextView)) return false;
     if (hasStaffAccess) return true;
     setLoginError(
-      `Gmail ${user?.email ?? "này"} chỉ có quyền xem. Vui lòng liên hệ admin để được cấp quyền tải tài liệu hoặc đóng góp.`,
+      `Gmail ${user?.email ?? "này"} chỉ có quyền xem. Vui lòng liên hệ admin để được cấp quyền tải tài liệu hoặc đóng góp tài liệu vào thư viện.`,
     );
     setPendingView(nextView ?? null);
     setShowAuthModal(true);
