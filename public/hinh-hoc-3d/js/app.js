@@ -206,10 +206,7 @@ class App {
         if (slider) slider.value = value;
         if (display) display.textContent = Math.round(value) + '%';
 
-        // Nếu là cylinder thì gửi lệnh đến iframe
-        if (this.currentShapeType === 'cylinder') {
-            this.updateIframeParams({ unfoldProgress: value });
-        } else if (this.currentShape && typeof this.currentShape.setUnfoldProgress === 'function') {
+        if (this.currentShape && typeof this.currentShape.setUnfoldProgress === 'function') {
             this.currentShape.setUnfoldProgress(value / 100);
         }
     }
@@ -304,55 +301,18 @@ class App {
         const nameOverlay = document.getElementById('shape-name-overlay');
         if (nameOverlay) nameOverlay.textContent = shapeName;
 
-        // Handle iframe for cylinder (hinhtru3d) - keep sidebar visible!
-        const iframe = document.getElementById('hinhtru3d-iframe');
         const canvas = document.getElementById('canvas3d');
         const canvasOverlays = document.querySelectorAll('.shape-name-overlay, .canvas-actions, .canvas-hint');
 
-        if (shapeType === 'cylinder') {
-            // Show hinhtru3d iframe, hide main canvas but KEEP SIDEBAR
-            iframe?.classList.remove('hidden');
-            if (canvas) canvas.style.display = 'none';
-            canvasOverlays.forEach(el => el.style.display = 'none');
+        if (canvas) canvas.style.display = 'block';
+        canvasOverlays.forEach(el => el.style.display = '');
 
-            // Dispose current shape
-            if (this.currentShape) {
-                this.currentShape.dispose();
-                this.currentShape = null;
-            }
-
-            // Tell iframe to hide its own control panel
-            this.sendToIframe({ type: 'HIDE_CONTROL_PANEL' });
-        } else {
-            // Hide iframe, show canvas
-            iframe?.classList.add('hidden');
-            if (canvas) canvas.style.display = 'block';
-            canvasOverlays.forEach(el => el.style.display = '');
-
-            // Load new shape
-            this.loadShape(shapeType);
-        }
+        this.loadShape(shapeType);
 
         // Render dynamic parameters for this shape (always)
         this.renderDynamicParams(shapeType);
 
         this.updateLessonContent();
-    }
-
-    // Send message to hinhtru3d iframe
-    sendToIframe(message) {
-        const iframe = document.getElementById('hinhtru3d-iframe');
-        if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage(message, '*');
-        }
-    }
-
-    // Update hinhtru3d iframe with new parameters
-    updateIframeParams(params) {
-        this.sendToIframe({
-            type: 'UPDATE_PARAMS',
-            ...params
-        });
     }
 
     renderDynamicParams(shapeType) {
@@ -411,38 +371,13 @@ class App {
                     const value = parseFloat(e.target.value);
                     valueDisplay.textContent = `${value} ${param.unit}`;
 
-                    // For cylinder - send to iframe
-                    if (this.currentShapeType === 'cylinder') {
-                        this.updateIframeParams({ [param.id]: value });
-                    } else {
-                        // Update local shape using handleControl
-                        if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
-                            this.currentShape.handleControl(param.id, value);
-                        }
+                    if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
+                        this.currentShape.handleControl(param.id, value);
                     }
                     this.updateStats();
                 });
             }
         });
-
-        // Also handle unfold slider for cylinder
-        if (shapeType === 'cylinder') {
-            const unfoldSlider = document.getElementById('control-unfold');
-            if (unfoldSlider) {
-                unfoldSlider.addEventListener('input', (e) => {
-                    const value = parseFloat(e.target.value);
-                    this.updateIframeParams({ unfoldProgress: value });
-                });
-            }
-
-            const opacitySlider = document.getElementById('control-opacity');
-            if (opacitySlider) {
-                opacitySlider.addEventListener('input', (e) => {
-                    const value = parseFloat(e.target.value);
-                    this.updateIframeParams({ opacity: value });
-                });
-            }
-        }
     }
 
     loadShape(shapeType) {

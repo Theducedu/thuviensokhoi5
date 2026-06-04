@@ -876,21 +876,6 @@ input[type="range"]::-moz-range-thumb {
     display: block;
 }
 
-/* Hinhtru3d iframe styles */
-.hinhtru3d-iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-    z-index: 10;
-}
-
-.hinhtru3d-iframe.hidden {
-    display: none;
-}
-
 /* Shape Name Overlay */
 .shape-name-overlay {
     position: absolute;
@@ -1290,18 +1275,3 @@ input[type="range"]::-moz-range-thumb {
     color: var(--text-muted);
 }
 
-/* ==========================================
-   HIDE IFRAME SIDEBAR - Prevent Duplicate
-   ========================================== */
-/* Hide the control panel inside hinhtru3d iframe to avoid duplicate sidebars */
-.hinhtru3d-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-
-/* Target elements inside iframe - this will hide the sidebar */
-#hinhtru3d-iframe::part(panel-container),
-#hinhtru3d-iframe::part(control-panel) {
-    display: none !important;
-}
