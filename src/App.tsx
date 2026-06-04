@@ -284,8 +284,7 @@ const seedData: AppData = {
       subject: "Tất cả các môn",
       description: "Kho mô hình hình học 3D trực quan, hỗ trợ học sinh quan sát và tương tác với các khối hình.",
       appUrl: "/hinh-hoc-3d/index.html",
-      thumbnailUrl:
-        "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=900&q=80",
+      thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg",
       author: "Ban quản trị",
       createdAt: "2026-06-04T08:00:00.000Z",
     },
@@ -340,7 +339,9 @@ function normalizeData(data: AppData): AppData {
         },
         ...teachers,
       ];
-  const digitalApps = data.digitalApps ?? seedData.digitalApps;
+  const digitalApps = (data.digitalApps ?? seedData.digitalApps).map((app) =>
+    app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app,
+  );
   const requiredDigitalApps = seedData.digitalApps.filter(
     (seedApp) => seedApp.id === "d-3" && !digitalApps.some((app) => app.id === seedApp.id),
   );
