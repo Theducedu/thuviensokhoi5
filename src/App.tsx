@@ -11,6 +11,7 @@
   ImagePlus,
   Library,
   LogOut,
+  Maximize2,
   Megaphone,
   Pencil,
   Plus,
@@ -21,6 +22,7 @@
   Trash2,
   UploadCloud,
   Users,
+  X,
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -679,6 +681,7 @@ export default function App() {
   const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
   const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
   const [editingDigitalAppId, setEditingDigitalAppId] = useState<string | null>(null);
+  const [selectedNews, setSelectedNews] = useState<News | null>(null);
 
   useHoverSound(true);
 
@@ -1794,8 +1797,13 @@ export default function App() {
             <section className="news-grid">
               {visibleNews.map((item) => (
                 <article className="news-card" key={item.id}>
-                  <img src={item.imageUrl} alt={item.title} />
-                  <div>
+                  <div className="news-card-media">
+                    <img src={item.imageUrl} alt={item.title} />
+                    <button className="image-zoom-button" type="button" onClick={() => setSelectedNews(item)} title="Xem ảnh lớn">
+                      <Maximize2 size={18} />
+                    </button>
+                  </div>
+                  <div className="news-card-body">
                     <span>{formatDate(item.createdAt)} · {item.author}</span>
                     <h3>{item.title}</h3>
                   </div>
@@ -2474,6 +2482,22 @@ export default function App() {
           </div>
         )}
       </section>
+      {selectedNews && (
+        <div className="image-lightbox" role="dialog" aria-modal="true" aria-label={selectedNews.title} onClick={() => setSelectedNews(null)}>
+          <section className="image-lightbox-panel" onClick={(event) => event.stopPropagation()}>
+            <button className="lightbox-close" type="button" onClick={() => setSelectedNews(null)} title="Đóng">
+              <X size={22} />
+            </button>
+            <img src={selectedNews.imageUrl} alt={selectedNews.title} />
+            <div>
+              <strong>{selectedNews.title}</strong>
+              <span>
+                {formatDate(selectedNews.createdAt)} · {selectedNews.author}
+              </span>
+            </div>
+          </section>
+        </div>
+      )}
       {showAuthModal && (
         <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label="Đăng nhập Google">
           <section className="auth-modal">
