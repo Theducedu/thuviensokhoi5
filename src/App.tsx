@@ -1153,6 +1153,14 @@ export default function App() {
               <img src="/banner-dashboard.jpg" alt="Thư viện số Khối 5 - TH Nguyễn Đình Chiểu" />
             </section>
 
+            <section className="dashboard-stats-strip">
+              <Metric icon={BarChart3} label="Lượt truy cập" value={stats.visits.toLocaleString("vi-VN")} />
+              <Metric icon={FileText} label="Tài liệu duyệt" value={String(stats.resources)} />
+              <Metric icon={ClipboardList} label="Chờ duyệt" value={String(stats.pending)} />
+              <Metric icon={Users} label="Tài khoản active" value={String(stats.teachers)} />
+              <Metric icon={ShieldCheck} label="Gmail đăng nhập" value={String(stats.loginAccounts)} />
+            </section>
+
             <section className="subject-focus content-band">
               <div className="section-heading">
                 <div>
@@ -1228,14 +1236,6 @@ export default function App() {
               </div>
 
               <div className="dashboard-side">
-                <section className="metrics-grid compact-metrics">
-                  <Metric icon={BarChart3} label="Lượt truy cập" value={stats.visits.toLocaleString("vi-VN")} />
-                  <Metric icon={FileText} label="Tài liệu duyệt" value={String(stats.resources)} />
-                  <Metric icon={ClipboardList} label="Chờ duyệt" value={String(stats.pending)} />
-                  <Metric icon={Users} label="Tài khoản active" value={String(stats.teachers)} />
-                  <Metric icon={ShieldCheck} label="Gmail đăng nhập" value={String(stats.loginAccounts)} />
-                </section>
-
                 <section className="content-band">
                   <div className="section-heading">
                     <h3>Ảnh hoạt động mới</h3>
