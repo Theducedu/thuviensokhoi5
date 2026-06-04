@@ -24,10 +24,21 @@
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { isFirebaseAuthReady, signInWithGoogle, signOutGoogle } from "./firebase";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { db, isFirebaseAuthReady, signInWithGoogle, signOutGoogle } from "./firebase";
 import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 
-type Role = "teacher" | "admin";
+type Role = "viewer" | "teacher" | "admin";
 type View = "dashboard" | "resources" | "news" | "contribute" | "guides" | "digital" | "admin";
 type ResourceStatus = "approved" | "pending" | "rejected";
 type ResourceType = "lesson" | "book";
@@ -90,12 +101,22 @@ type DigitalApp = {
   createdAt: string;
 };
 
+type LoginStat = {
+  email: string;
+  name: string;
+  role: Role;
+  subject: string;
+  count: number;
+  lastLoginAt: string;
+};
+
 type AppData = {
   teachers: Teacher[];
   resources: Resource[];
   news: News[];
   guides: Guide[];
   digitalApps: DigitalApp[];
+  loginStats: LoginStat[];
   visits: number;
 };
 
@@ -131,6 +152,7 @@ const today = new Date().toISOString();
 
 const seedData: AppData = {
   visits: 1286,
+  loginStats: [],
   teachers: [
     {
       id: "t-admin",
@@ -309,6 +331,7 @@ function normalizeData(data: AppData): AppData {
   return {
     ...data,
     teachers: normalizedTeachers,
+    loginStats: data.loginStats ?? [],
     guides: data.guides ?? seedData.guides,
     digitalApps: data.digitalApps ?? seedData.digitalApps,
     resources: data.resources.map((resource) => ({
@@ -352,6 +375,18 @@ function formatDate(value: string) {
 
 function createId(prefix: string) {
   return `${prefix}-${crypto.randomUUID()}`;
+}
+
+function emailDocId(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function toIsoDate(value: unknown) {
+  if (typeof value === "string") return value;
+  if (value && typeof (value as { toDate?: () => Date }).toDate === "function") {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  return new Date().toISOString();
 }
 
 function subjectClass(subject: string) {
@@ -495,16 +530,118 @@ export default function App() {
   useHoverSound(true);
 
   const setAndSaveData = (next: AppData) => {
-    setData(next);
-    localStorage.setItem(storageKey, JSON.stringify(next));
+    const normalized = normalizeData(next);
+    setData(normalized);
+    localStorage.setItem(storageKey, JSON.stringify(normalized));
+  };
+
+  const updateAndSaveData = (updater: (current: AppData) => AppData) => {
+    setData((current) => {
+      const next = normalizeData(updater(current));
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
   };
 
   const approvedResources = data.resources.filter((item) => item.status === "approved");
   const pendingResources = data.resources.filter((item) => item.status === "pending");
   const visibleNews = data.news.filter((item) => item.visible);
 
+  const refreshRemoteAccessData = async () => {
+    if (!db) return;
+
+    const [teacherDocs, loginDocs] = await Promise.all([
+      getDocs(collection(db, "authorizedUsers")),
+      getDocs(collection(db, "loginStats")),
+    ]);
+
+    const remoteTeachers = teacherDocs.docs.map((snapshot) => {
+      const item = snapshot.data();
+      return {
+        id: String(item.id || snapshot.id),
+        name: String(item.name || item.email || ""),
+        email: String(item.email || snapshot.id).toLowerCase(),
+        subject: String(item.subject || "Chưa phân môn"),
+        code: "",
+        role: item.role === "admin" ? "admin" : "teacher",
+        active: item.active !== false,
+      } satisfies Teacher;
+    });
+
+    const remoteStats = loginDocs.docs.map((snapshot) => {
+      const item = snapshot.data();
+      return {
+        email: String(item.email || snapshot.id).toLowerCase(),
+        name: String(item.name || item.email || snapshot.id),
+        role: item.role === "admin" ? "admin" : item.role === "teacher" ? "teacher" : "viewer",
+        subject: String(item.subject || "Người xem"),
+        count: Number(item.count || 1),
+        lastLoginAt: toIsoDate(item.lastLoginAt),
+      } satisfies LoginStat;
+    });
+
+    updateAndSaveData((current) => ({
+      ...current,
+      teachers: remoteTeachers.length ? remoteTeachers : current.teachers,
+      loginStats: remoteStats,
+    }));
+  };
+
+  const updateLocalLoginStats = (nextUser: CurrentUser) => {
+    const now = new Date().toISOString();
+
+    updateAndSaveData((current) => {
+      const existing = current.loginStats.find(
+        (item) => item.email.toLowerCase() === nextUser.email.toLowerCase(),
+      );
+      const nextStat: LoginStat = {
+        email: nextUser.email.toLowerCase(),
+        name: nextUser.name,
+        role: nextUser.role,
+        subject: nextUser.subject,
+        count: (existing?.count ?? 0) + 1,
+        lastLoginAt: now,
+      };
+
+      return {
+        ...current,
+        visits: current.visits + 1,
+        loginStats: existing
+          ? current.loginStats.map((item) =>
+              item.email.toLowerCase() === nextUser.email.toLowerCase() ? nextStat : item,
+            )
+          : [nextStat, ...current.loginStats],
+      };
+    });
+  };
+
+  const recordRemoteLogin = async (nextUser: CurrentUser) => {
+    if (!db) return;
+
+    await setDoc(
+      doc(db, "loginStats", emailDocId(nextUser.email)),
+      {
+        email: nextUser.email.toLowerCase(),
+        name: nextUser.name,
+        role: nextUser.role,
+        subject: nextUser.subject,
+        count: increment(1),
+        lastLoginAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    void refreshRemoteAccessData().catch(() => {
+      setLoginError("");
+    });
+  }, [user?.role]);
+
   useEffect(() => {
     if (!user) return;
+    if (user.role === "viewer") return;
 
     const teacher = data.teachers.find(
       (item) => item.email.toLowerCase() === user.email.toLowerCase() && item.active,
@@ -536,9 +673,17 @@ export default function App() {
       resources: approvedResources.length,
       pending: pendingResources.length,
       teachers: data.teachers.filter((teacher) => teacher.active).length,
+      loginAccounts: data.loginStats.length,
       opens,
     };
-  }, [approvedResources.length, data.resources, data.teachers, data.visits, pendingResources.length]);
+  }, [
+    approvedResources.length,
+    data.loginStats.length,
+    data.resources,
+    data.teachers,
+    data.visits,
+    pendingResources.length,
+  ]);
 
   const filteredResources = approvedResources.filter((item) => {
     const matchesQuery = `${item.title} ${item.description} ${item.contributor}`
@@ -574,30 +719,72 @@ export default function App() {
         return;
       }
 
-      const teacher = data.teachers.find(
+      const googleEmail = googleUser.email.toLowerCase();
+      let authorizedUser = data.teachers.find(
         (item) => item.email.toLowerCase() === googleUser.email.toLowerCase() && item.active,
       );
 
-      if (!teacher) {
-        setLoginError("Email Google này chưa được admin cấp quyền tải/đóng góp.");
-        return;
+      if (db) {
+        try {
+          if (googleEmail === primaryAdminEmail) {
+            authorizedUser = {
+              id: "t-admin",
+              name: "Quản trị Khối 5",
+              email: primaryAdminEmail,
+              subject: "Quản trị",
+              code: "",
+              role: "admin",
+              active: true,
+            };
+            await setDoc(
+              doc(db, "authorizedUsers", emailDocId(primaryAdminEmail)),
+              {
+                ...authorizedUser,
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true },
+            );
+          } else {
+            const accessSnapshot = await getDoc(doc(db, "authorizedUsers", emailDocId(googleEmail)));
+            if (accessSnapshot.exists()) {
+              const item = accessSnapshot.data();
+              if (item.active !== false) {
+                authorizedUser = {
+                  id: String(item.id || accessSnapshot.id),
+                  name: String(item.name || googleUser.displayName || googleEmail),
+                  email: String(item.email || googleEmail).toLowerCase(),
+                  subject: String(item.subject || "Chưa phân môn"),
+                  code: "",
+                  role: item.role === "admin" ? "admin" : "teacher",
+                  active: true,
+                };
+              } else {
+                authorizedUser = undefined;
+              }
+            }
+          }
+        } catch {
+          // Fallback to local data if Firestore is not enabled yet.
+        }
       }
 
       const nextUser: CurrentUser = {
-        name: teacher.name || googleUser.displayName || teacher.email,
-        email: teacher.email,
-        role: teacher.role,
-        subject: teacher.subject,
+        name: authorizedUser?.name || googleUser.displayName || googleEmail,
+        email: authorizedUser?.email || googleEmail,
+        role: authorizedUser?.role || "viewer",
+        subject: authorizedUser?.subject || "Người xem",
       };
 
-      const nextData = { ...data, visits: data.visits + 1 };
-      setAndSaveData(nextData);
+      updateLocalLoginStats(nextUser);
+      void recordRemoteLogin(nextUser).then(() => {
+        if (nextUser.role === "admin") void refreshRemoteAccessData();
+      });
       setUser(nextUser);
       localStorage.setItem(sessionKey, JSON.stringify(nextUser));
       setLoginError("");
       setGoogleAuthMessage("");
       setShowAuthModal(false);
-      if (pendingView) {
+      if (pendingView && (pendingView !== "contribute" || nextUser.role !== "viewer")) {
         setView(pendingView);
         setPendingView(null);
       }
@@ -608,8 +795,19 @@ export default function App() {
     }
   };
 
-  const requireTeacherAccess = (nextView?: View) => {
+  const hasStaffAccess = user?.role === "teacher" || user?.role === "admin";
+
+  const requireGoogleAccess = (nextView?: View) => {
     if (user) return true;
+    setPendingView(nextView ?? null);
+    setShowAuthModal(true);
+    return false;
+  };
+
+  const requireStaffAccess = (nextView?: View) => {
+    if (!requireGoogleAccess(nextView)) return false;
+    if (hasStaffAccess) return true;
+    setLoginError("Email Google này chỉ có quyền xem. Admin cần cấp quyền để tải/đóng góp.");
     setPendingView(nextView ?? null);
     setShowAuthModal(true);
     return false;
@@ -645,7 +843,7 @@ export default function App() {
   };
 
   const openResource = (resource: Resource) => {
-    if (!requireTeacherAccess()) return;
+    if (!requireStaffAccess()) return;
 
     updateResource(resource.id, {
       views: resource.views + 1,
@@ -656,10 +854,8 @@ export default function App() {
 
   const addResource = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
+    if (!requireStaffAccess("contribute")) return;
+    if (!user) return;
 
     const form = new FormData(event.currentTarget);
     const next: Resource = {
@@ -683,7 +879,7 @@ export default function App() {
     setView(user.role === "admin" ? "admin" : "resources");
   };
 
-  const addTeacher = (event: FormEvent<HTMLFormElement>) => {
+  const addTeacher = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const role = form.get("role") as Role;
@@ -705,14 +901,46 @@ export default function App() {
         ? data.teachers.map((teacher) => (teacher.id === existingTeacher.id ? next : teacher))
         : [next, ...data.teachers],
     });
+
+    if (db) {
+      await setDoc(
+        doc(db, "authorizedUsers", emailDocId(email)),
+        {
+          ...next,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+
     event.currentTarget.reset();
   };
 
-  const deleteTeacher = (id: string) => {
+  const updateTeacherAccess = async (teacher: Teacher, active: boolean) => {
     setAndSaveData({
       ...data,
-      teachers: data.teachers.filter((teacher) => teacher.id !== id),
+      teachers: data.teachers.map((item) => (item.id === teacher.id ? { ...item, active } : item)),
     });
+
+    if (db) {
+      await updateDoc(doc(db, "authorizedUsers", emailDocId(teacher.email)), {
+        active,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  };
+
+  const deleteTeacher = async (teacher: Teacher) => {
+    if (teacher.email.toLowerCase() === primaryAdminEmail) return;
+
+    setAndSaveData({
+      ...data,
+      teachers: data.teachers.filter((item) => item.id !== teacher.id),
+    });
+
+    if (db) {
+      await deleteDoc(doc(db, "authorizedUsers", emailDocId(teacher.email)));
+    }
   };
 
   const addNews = async (event: FormEvent<HTMLFormElement>) => {
@@ -834,7 +1062,8 @@ export default function App() {
                   key={item.id}
                   className={view === item.id ? "active" : ""}
                   onClick={() => {
-                    if (item.id === "contribute" && !requireTeacherAccess("contribute")) return;
+                    if (!requireGoogleAccess(item.id)) return;
+                    if (item.id === "contribute" && !requireStaffAccess("contribute")) return;
                     setView(item.id);
                   }}
                   title={item.label}
@@ -850,7 +1079,7 @@ export default function App() {
           <span className="avatar">{user.name.slice(0, 1).toUpperCase()}</span>
           <div>
             <strong>{user.name}</strong>
-            <span>{user.role === "admin" ? "Admin" : user.subject}</span>
+            <span>{user.role === "admin" ? "Admin" : user.role === "teacher" ? user.subject : "Người xem"}</span>
           </div>
           <button onClick={logout} className="icon-button" title="Đăng xuất">
             <LogOut size={18} />
@@ -909,13 +1138,20 @@ export default function App() {
               <Metric icon={FileText} label="Tài liệu duyệt" value={String(stats.resources)} />
               <Metric icon={ClipboardList} label="Chờ duyệt" value={String(stats.pending)} />
               <Metric icon={Users} label="Tài khoản active" value={String(stats.teachers)} />
+              <Metric icon={ShieldCheck} label="Gmail đăng nhập" value={String(stats.loginAccounts)} />
             </section>
 
             <section className="content-band split">
               <div>
                 <div className="section-heading">
                   <h3>Tài liệu mới</h3>
-                  <button className="text-button" onClick={() => setView("resources")}>
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      if (!requireGoogleAccess("resources")) return;
+                      setView("resources");
+                    }}
+                  >
                     Xem kho
                     <ExternalLink size={16} />
                   </button>
@@ -938,7 +1174,13 @@ export default function App() {
               <div>
                 <div className="section-heading">
                   <h3>Ảnh hoạt động mới</h3>
-                  <button className="text-button" onClick={() => setView("news")}>
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      if (!requireGoogleAccess("news")) return;
+                      setView("news");
+                    }}
+                  >
                     Xem ảnh
                     <ExternalLink size={16} />
                   </button>
@@ -965,6 +1207,7 @@ export default function App() {
                     key={subject}
                     className={subjectClass(subject)}
                     onClick={() => {
+                      if (!requireGoogleAccess("resources")) return;
                       setSubjectFilter(subject);
                       setView("resources");
                     }}
@@ -1391,14 +1634,7 @@ export default function App() {
                           <td>
                             <button
                               className={`switch ${teacher.active ? "on" : ""}`}
-                              onClick={() =>
-                                setAndSaveData({
-                                  ...data,
-                                  teachers: data.teachers.map((item) =>
-                                    item.id === teacher.id ? { ...item, active: !item.active } : item,
-                                  ),
-                                })
-                              }
+                              onClick={() => void updateTeacherAccess(teacher, !teacher.active)}
                               title={teacher.active ? "Thu hồi truy cập" : "Cấp lại truy cập"}
                             >
                               <span />
@@ -1407,7 +1643,7 @@ export default function App() {
                           <td>
                             <button
                               className="icon-button danger-icon"
-                              onClick={() => deleteTeacher(teacher.id)}
+                              onClick={() => void deleteTeacher(teacher)}
                               title="Xóa email"
                               disabled={teacher.email.toLowerCase() === primaryAdminEmail}
                             >
@@ -1416,6 +1652,39 @@ export default function App() {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="section-heading secondary-heading">
+                  <h3>Gmail đã đăng nhập</h3>
+                  <span className="pill">{data.loginStats.length}</span>
+                </div>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tài khoản Google</th>
+                        <th>Quyền</th>
+                        <th>Số lần</th>
+                        <th>Lần gần nhất</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...data.loginStats]
+                        .sort((a, b) => new Date(b.lastLoginAt).getTime() - new Date(a.lastLoginAt).getTime())
+                        .map((item) => (
+                          <tr key={item.email}>
+                            <td>
+                              <strong>{item.name}</strong>
+                              <span>{item.email}</span>
+                            </td>
+                            <td>
+                              {item.role === "admin" ? "Admin" : item.role === "teacher" ? "GV" : "Người xem"}
+                            </td>
+                            <td>{item.count}</td>
+                            <td>{formatDate(item.lastLoginAt)}</td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>

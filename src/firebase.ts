@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,10 +16,11 @@ const firebaseApp = isFirebaseAuthReady
   : null;
 
 const auth = firebaseApp ? getAuth(firebaseApp) : null;
+export const db = firebaseApp ? getFirestore(firebaseApp) : null;
 
 export async function signInWithGoogle() {
   if (!auth) {
-    throw new Error("Firebase Auth chưa được cấu hình.");
+    throw new Error("Firebase Auth chua duoc cau hinh.");
   }
 
   const provider = new GoogleAuthProvider();

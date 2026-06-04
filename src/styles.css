@@ -738,6 +738,10 @@ textarea:focus {
   letter-spacing: 0;
 }
 
+.secondary-heading {
+  margin-top: 18px;
+}
+
 .compact-list {
   display: grid;
   gap: 10px;

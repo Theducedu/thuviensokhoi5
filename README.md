@@ -13,13 +13,19 @@ npm run dev
 
 Ung dung su dung Firebase Google Auth. Luong quyen truy cap:
 
-1. Tat ca nguoi dung co the xem noi dung cong khai.
-2. Khi tai tai lieu hoac dong gop, nguoi dung bam `Dang nhap bang Google`.
-3. He thong lay email Google that.
+1. Khach bam vao bat ky muc nao se phai dang nhap Google.
+2. He thong ghi thong ke Gmail dang nhap vao Firestore.
+3. Gmail chua duoc cap quyen co vai tro `Nguoi xem`.
 4. Chi email da duoc admin them trong muc `Quan tri` moi co quyen tai/dong gop.
 5. Admin mac dinh: `nguyenduc91ltk@gmail.com`.
 
 Quan tri co the them email, thu hoi truy cap hoac xoa email khoi danh sach.
+
+## Firestore
+
+Can bat Cloud Firestore trong Firebase de luu danh sach email duoc cap quyen va thong ke Gmail dang nhap.
+
+Sau khi tao Firestore, dan noi dung file `firestore.rules` vao tab Rules va Publish.
 
 ## Bien moi truong Vercel
 
