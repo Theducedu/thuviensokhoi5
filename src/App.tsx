@@ -37,7 +37,7 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db, getGoogleRedirectUser, isFirebaseAuthReady, signInWithGoogle, signInWithGoogleRedirect, signOutGoogle } from "./firebase";
+import { currentGoogleEmail, db, getGoogleRedirectUser, isFirebaseAuthReady, signInWithGoogle, signInWithGoogleRedirect, signOutGoogle } from "./firebase";
 import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 
 type Role = "viewer" | "teacher" | "admin";
@@ -221,6 +221,10 @@ function isEmbeddedBrowser() {
 
 function isView(value: string | null): value is View {
   return value === "dashboard" || value === "resources" || value === "news" || value === "contribute" || value === "guides" || value === "digital" || value === "admin";
+}
+
+function errorCode(error: unknown) {
+  return typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : "";
 }
 
 const today = new Date().toISOString();
@@ -1301,6 +1305,12 @@ export default function App() {
   const addAdminResource = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || user.role !== "admin") return;
+    const firebaseEmail = currentGoogleEmail();
+    if (firebaseEmail !== primaryAdminEmail) {
+      setLoginError("Phiên đăng nhập Firebase chưa đúng admin. Vui lòng đăng xuất rồi đăng nhập lại bằng Gmail nguyenduc91ltk@gmail.com.");
+      setShowAuthModal(true);
+      return;
+    }
 
     const form = new FormData(event.currentTarget);
     const next: Resource = {
@@ -1323,8 +1333,14 @@ export default function App() {
       await persistContentItem("resources", next);
       setAndSaveData({ ...data, resources: [next, ...data.resources] });
       event.currentTarget.reset();
-    } catch {
-      window.alert("Chưa thêm được tài liệu vào thư viện. Vui lòng kiểm tra Firestore Rules và đăng nhập đúng tài khoản admin.");
+    } catch (error) {
+      console.error("Không thêm được tài liệu thư viện:", error);
+      const code = errorCode(error);
+      window.alert(
+        code
+          ? `Chưa thêm được tài liệu vào thư viện. Lỗi Firebase: ${code}. Vui lòng kiểm tra Firestore Rules đã Publish và đăng nhập đúng tài khoản admin.`
+          : "Chưa thêm được tài liệu vào thư viện. Vui lòng kiểm tra Firestore Rules và đăng nhập đúng tài khoản admin.",
+      );
     }
   };
 

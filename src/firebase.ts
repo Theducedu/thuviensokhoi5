@@ -18,6 +18,10 @@ const firebaseApp = isFirebaseAuthReady
 const auth = firebaseApp ? getAuth(firebaseApp) : null;
 export const db = firebaseApp ? getFirestore(firebaseApp) : null;
 
+export function currentGoogleEmail() {
+  return auth?.currentUser?.email?.toLowerCase() ?? "";
+}
+
 function googleProvider() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
