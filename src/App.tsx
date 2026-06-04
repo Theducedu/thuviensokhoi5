@@ -227,6 +227,10 @@ function errorCode(error: unknown) {
   return typeof error === "object" && error && "code" in error ? String((error as { code?: unknown }).code) : "";
 }
 
+function errorMessage(error: unknown) {
+  return typeof error === "object" && error && "message" in error ? String((error as { message?: unknown }).message) : String(error);
+}
+
 const today = new Date().toISOString();
 
 const seedData: AppData = {
@@ -1336,11 +1340,15 @@ export default function App() {
     } catch (error) {
       console.error("Không thêm được tài liệu thư viện:", error);
       const code = errorCode(error);
-      window.alert(
-        code
-          ? `Chưa thêm được tài liệu vào thư viện. Lỗi Firebase: ${code}. Vui lòng kiểm tra Firestore Rules đã Publish và đăng nhập đúng tài khoản admin.`
-          : "Chưa thêm được tài liệu vào thư viện. Vui lòng kiểm tra Firestore Rules và đăng nhập đúng tài khoản admin.",
-      );
+      const message = errorMessage(error);
+      window.alert(`Chưa thêm được tài liệu vào thư viện.
+
+Firebase Auth email: ${firebaseEmail || "(chưa có)"}
+App đang hiển thị email: ${user.email}
+Mã lỗi Firebase: ${code || "(không có)"}
+Chi tiết: ${message}
+
+Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publish và email admin trong Rules đúng là ${primaryAdminEmail}.`);
     }
   };
 
