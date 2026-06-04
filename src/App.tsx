@@ -148,6 +148,14 @@ const resourceTypes: Record<ResourceType, string> = {
   book: "Sách tham khảo",
 };
 
+const digitalCategories: DigitalApp["category"][] = [
+  "Game học tập",
+  "AI hỗ trợ",
+  "Hình học 3D",
+  "Mô phỏng",
+  "Công cụ luyện tập",
+];
+
 const storageKey = "khoi5-library-data";
 const sessionKey = "khoi5-library-user";
 const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
@@ -606,6 +614,9 @@ export default function App() {
   const [subjectFilter, setSubjectFilter] = useState("Tất cả");
   const [typeFilter, setTypeFilter] = useState<"all" | ResourceType>("all");
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
+  const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
+  const [editingDigitalAppId, setEditingDigitalAppId] = useState<string | null>(null);
 
   useHoverSound(true);
 
@@ -1227,6 +1238,43 @@ export default function App() {
     void persistContentItem("news", updatedNews);
   };
 
+  const saveNewsEdit = async (event: FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const existingNews = data.news.find((item) => item.id === id);
+    if (!existingNews) return;
+
+    const form = new FormData(event.currentTarget);
+    const imageFile = form.get("imageFile");
+    let imageUrl = String(form.get("imageUrl") || "").trim() || existingNews.imageUrl;
+
+    try {
+      if (imageFile instanceof File && imageFile.size > 0) {
+        imageUrl = await imageFileToCompressedDataUrl(imageFile);
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Không xử lý được ảnh. Vui lòng thử ảnh khác.");
+      return;
+    }
+
+    const updatedNews: News = {
+      ...existingNews,
+      title: String(form.get("title") || existingNews.title),
+      imageUrl,
+      visible: String(form.get("visible") || "true") === "true",
+    };
+
+    try {
+      await persistContentItem("news", updatedNews);
+      setAndSaveData({
+        ...data,
+        news: data.news.map((item) => (item.id === id ? updatedNews : item)),
+      });
+      setEditingNewsId(null);
+    } catch {
+      window.alert("Chưa lưu được thay đổi ảnh hoạt động lên hệ thống chung. Vui lòng thử lại.");
+    }
+  };
+
   const addGuide = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || user.role !== "admin") return;
@@ -1272,6 +1320,45 @@ export default function App() {
     void deleteContentItem("guides", id);
   };
 
+  const saveGuideEdit = async (event: FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const existingGuide = data.guides.find((item) => item.id === id);
+    if (!existingGuide) return;
+
+    const form = new FormData(event.currentTarget);
+    const imageFile = form.get("imageFile");
+    let imageUrl = String(form.get("imageUrl") || "").trim() || existingGuide.imageUrl;
+
+    try {
+      if (imageFile instanceof File && imageFile.size > 0) {
+        imageUrl = await imageFileToCompressedDataUrl(imageFile);
+      }
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Không xử lý được ảnh thumbnail. Vui lòng thử ảnh khác.");
+      return;
+    }
+
+    const updatedGuide: Guide = {
+      ...existingGuide,
+      title: String(form.get("title") || ""),
+      content: String(form.get("content") || ""),
+      imageUrl,
+      linkUrl: String(form.get("linkUrl") || ""),
+      linkLabel: String(form.get("linkLabel") || "Mở liên kết"),
+    };
+
+    try {
+      await persistContentItem("guides", updatedGuide);
+      setAndSaveData({
+        ...data,
+        guides: data.guides.map((item) => (item.id === id ? updatedGuide : item)),
+      });
+      setEditingGuideId(null);
+    } catch {
+      window.alert("Chưa lưu được thay đổi bài CNTT-AI lên hệ thống chung. Vui lòng thử lại.");
+    }
+  };
+
   const addDigitalApp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || user.role !== "admin") return;
@@ -1301,6 +1388,34 @@ export default function App() {
     });
 
     await deleteContentItem("digitalApps", id);
+  };
+
+  const saveDigitalAppEdit = async (event: FormEvent<HTMLFormElement>, id: string) => {
+    event.preventDefault();
+    const existingApp = data.digitalApps.find((item) => item.id === id);
+    if (!existingApp) return;
+
+    const form = new FormData(event.currentTarget);
+    const updatedApp: DigitalApp = {
+      ...existingApp,
+      title: String(form.get("title") || ""),
+      category: form.get("category") as DigitalApp["category"],
+      subject: String(form.get("subject") || subjects[0]),
+      description: String(form.get("description") || ""),
+      appUrl: String(form.get("appUrl") || ""),
+      thumbnailUrl: String(form.get("thumbnailUrl") || ""),
+    };
+
+    try {
+      await persistContentItem("digitalApps", updatedApp);
+      setAndSaveData({
+        ...data,
+        digitalApps: data.digitalApps.map((item) => (item.id === id ? updatedApp : item)),
+      });
+      setEditingDigitalAppId(null);
+    } catch {
+      window.alert("Chưa lưu được thay đổi công cụ số lên hệ thống chung. Vui lòng thử lại.");
+    }
   };
 
   const navItems: Array<{ id: View; label: string; icon: typeof Gauge; adminOnly?: boolean }> = [
@@ -1716,35 +1831,84 @@ export default function App() {
                 <EmptyState title="Chưa có bài cẩm nang" text="Các bài chia sẻ CNTT-AI sẽ xuất hiện tại đây." />
               ) : (
                 data.guides.map((guide) => (
-                  <article className="guide-card" key={guide.id}>
-                    <img className="guide-card-thumbnail" src={guide.imageUrl || defaultGuideThumbnail} alt={guide.title} />
-                    <div className="guide-card-head">
-                      <span className="guide-icon">
-                        <Lightbulb size={20} />
-                      </span>
-                      <div>
-                        <strong>{guide.title}</strong>
-                        <span>
-                          {formatDate(guide.createdAt)} · {guide.author}
-                        </span>
-                      </div>
-                    </div>
-                    <p>{guide.content}</p>
-                    <div className="card-footer">
-                      {guide.linkUrl ? (
-                        <button className="text-button" onClick={() => window.open(guide.linkUrl, "_blank", "noopener,noreferrer")}>
-                          {guide.linkLabel || "Mở liên kết"}
-                          <ExternalLink size={16} />
-                        </button>
-                      ) : (
-                        <span>Không có link đính kèm</span>
-                      )}
-                      {user?.role === "admin" && (
-                        <button className="icon-button danger-icon" onClick={() => deleteGuide(guide.id)} title="Xóa bài">
-                          <Trash2 size={18} />
-                        </button>
-                      )}
-                    </div>
+                  <article className={`guide-card ${editingGuideId === guide.id ? "editing" : ""}`} key={guide.id}>
+                    {editingGuideId === guide.id ? (
+                      <form className="resource-edit-form" onSubmit={(event) => saveGuideEdit(event, guide.id)}>
+                        <label>
+                          Tiêu đề
+                          <input name="title" defaultValue={guide.title} required />
+                        </label>
+                        <label>
+                          Nội dung chia sẻ
+                          <textarea name="content" defaultValue={guide.content} rows={7} required />
+                        </label>
+                        <div className="form-grid">
+                          <label>
+                            Ảnh thumbnail mới
+                            <input name="imageFile" type="file" accept="image/*" />
+                          </label>
+                          <label>
+                            Link ảnh mới
+                            <input name="imageUrl" type="url" placeholder="Để trống nếu giữ ảnh hiện tại" />
+                          </label>
+                        </div>
+                        <div className="form-grid">
+                          <label>
+                            Tên link
+                            <input name="linkLabel" defaultValue={guide.linkLabel} placeholder="Ví dụ: Xem video hướng dẫn" />
+                          </label>
+                          <label>
+                            Link đính kèm
+                            <input name="linkUrl" type="url" defaultValue={guide.linkUrl} placeholder="https://..." />
+                          </label>
+                        </div>
+                        <div className="review-actions">
+                          <button className="success-button" type="submit">
+                            <Save size={17} />
+                            Lưu
+                          </button>
+                          <button className="text-button" type="button" onClick={() => setEditingGuideId(null)}>
+                            Hủy
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <img className="guide-card-thumbnail" src={guide.imageUrl || defaultGuideThumbnail} alt={guide.title} />
+                        <div className="guide-card-head">
+                          <span className="guide-icon">
+                            <Lightbulb size={20} />
+                          </span>
+                          <div>
+                            <strong>{guide.title}</strong>
+                            <span>
+                              {formatDate(guide.createdAt)} · {guide.author}
+                            </span>
+                          </div>
+                        </div>
+                        <p>{guide.content}</p>
+                        <div className="card-footer">
+                          {guide.linkUrl ? (
+                            <button className="text-button" onClick={() => window.open(guide.linkUrl, "_blank", "noopener,noreferrer")}>
+                              {guide.linkLabel || "Mở liên kết"}
+                              <ExternalLink size={16} />
+                            </button>
+                          ) : (
+                            <span>Không có link đính kèm</span>
+                          )}
+                          {user?.role === "admin" && (
+                            <div className="review-actions">
+                              <button className="icon-button" onClick={() => setEditingGuideId(guide.id)} title="Sửa bài">
+                                <Pencil size={18} />
+                              </button>
+                              <button className="icon-button danger-icon" onClick={() => deleteGuide(guide.id)} title="Xóa bài">
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </article>
                 ))
               )}
@@ -1768,11 +1932,9 @@ export default function App() {
                   <label>
                     Nhóm
                     <select name="category" defaultValue="Game học tập">
-                      <option>Game học tập</option>
-                      <option>AI hỗ trợ</option>
-                      <option>Hình học 3D</option>
-                      <option>Mô phỏng</option>
-                      <option>Công cụ luyện tập</option>
+                      {digitalCategories.map((category) => (
+                        <option key={category}>{category}</option>
+                      ))}
                     </select>
                   </label>
                   <label>
@@ -1817,32 +1979,87 @@ export default function App() {
               ) : (
                 <section className="digital-grid">
                   {data.digitalApps.map((app) => (
-                    <article className={`digital-card ${subjectClass(app.subject)}`} key={app.id}>
-                      <img src={app.thumbnailUrl || "/banner-dashboard.jpg"} alt={app.title} />
-                      <div className="digital-card-body">
-                        <div className="resource-head">
-                          <span className="resource-type">{app.category}</span>
-                          <span className="status approved">{app.subject}</span>
-                        </div>
-                        <h3>{app.title}</h3>
-                        <p>{app.description}</p>
-                        <div className="card-footer">
-                          <span>
-                            {formatDate(app.createdAt)} · {app.author}
-                          </span>
-                          <div className="review-actions">
-                            <button className="primary-button small" onClick={() => window.open(app.appUrl, "_blank", "noopener,noreferrer")}>
-                              <ExternalLink size={17} />
-                              Mở
-                            </button>
-                            {user?.role === "admin" && (
-                              <button className="icon-button danger-icon" onClick={() => void deleteDigitalApp(app.id)} title="Xóa ứng dụng">
-                                <Trash2 size={18} />
-                              </button>
-                            )}
+                    <article className={`digital-card ${subjectClass(app.subject)} ${editingDigitalAppId === app.id ? "editing" : ""}`} key={app.id}>
+                      {editingDigitalAppId === app.id ? (
+                        <form className="resource-edit-form digital-edit-form" onSubmit={(event) => saveDigitalAppEdit(event, app.id)}>
+                          <label>
+                            Tên ứng dụng
+                            <input name="title" defaultValue={app.title} required />
+                          </label>
+                          <div className="form-grid">
+                            <label>
+                              Nhóm
+                              <select name="category" defaultValue={app.category}>
+                                {digitalCategories.map((category) => (
+                                  <option key={category}>{category}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              Môn
+                              <select name="subject" defaultValue={app.subject}>
+                                {subjects.map((subject) => (
+                                  <option key={subject}>{subject}</option>
+                                ))}
+                              </select>
+                            </label>
                           </div>
-                        </div>
-                      </div>
+                          <label>
+                            Mô tả
+                            <textarea name="description" defaultValue={app.description} rows={4} required />
+                          </label>
+                          <label>
+                            Link mở ứng dụng
+                            <input name="appUrl" type="url" defaultValue={app.appUrl} required />
+                          </label>
+                          <label>
+                            Link ảnh đại diện
+                            <input name="thumbnailUrl" type="url" defaultValue={app.thumbnailUrl} />
+                          </label>
+                          <div className="review-actions">
+                            <button className="success-button" type="submit">
+                              <Save size={17} />
+                              Lưu
+                            </button>
+                            <button className="text-button" type="button" onClick={() => setEditingDigitalAppId(null)}>
+                              Hủy
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          <img src={app.thumbnailUrl || "/banner-dashboard.jpg"} alt={app.title} />
+                          <div className="digital-card-body">
+                            <div className="resource-head">
+                              <span className="resource-type">{app.category}</span>
+                              <span className="status approved">{app.subject}</span>
+                            </div>
+                            <h3>{app.title}</h3>
+                            <p>{app.description}</p>
+                            <div className="card-footer">
+                              <span>
+                                {formatDate(app.createdAt)} · {app.author}
+                              </span>
+                              <div className="review-actions">
+                                <button className="primary-button small" onClick={() => window.open(app.appUrl, "_blank", "noopener,noreferrer")}>
+                                  <ExternalLink size={17} />
+                                  Mở
+                                </button>
+                                {user?.role === "admin" && (
+                                  <>
+                                    <button className="icon-button" onClick={() => setEditingDigitalAppId(app.id)} title="Sửa ứng dụng">
+                                      <Pencil size={18} />
+                                    </button>
+                                    <button className="icon-button danger-icon" onClick={() => void deleteDigitalApp(app.id)} title="Xóa ứng dụng">
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </article>
                   ))}
                 </section>
@@ -2015,22 +2232,62 @@ export default function App() {
                 </form>
                 <div className="admin-list news-admin">
                   {data.news.map((item) => (
-                    <article key={item.id}>
-                      <img src={item.imageUrl} alt="" />
-                      <div>
-                        <strong>{item.title}</strong>
-                        <span>{item.visible ? "Đang hiện" : "Đã ẩn"}</span>
-                      </div>
-                      <button className="icon-button danger-icon" onClick={() => deleteNews(item.id)} title="Xóa ảnh">
-                        <Trash2 size={18} />
-                      </button>
-                      <button
-                        className="icon-button"
-                        onClick={() => toggleNewsVisibility(item)}
-                        title={item.visible ? "Ẩn tin" : "Hiện tin"}
-                      >
-                        {item.visible ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
-                      </button>
+                    <article key={item.id} className={editingNewsId === item.id ? "editing" : ""}>
+                      {editingNewsId === item.id ? (
+                        <form className="resource-edit-form" onSubmit={(event) => saveNewsEdit(event, item.id)}>
+                          <label>
+                            Chú thích ảnh
+                            <input name="title" defaultValue={item.title} required />
+                          </label>
+                          <div className="form-grid">
+                            <label>
+                              Ảnh mới
+                              <input name="imageFile" type="file" accept="image/*" />
+                            </label>
+                            <label>
+                              Link ảnh mới
+                              <input name="imageUrl" type="url" placeholder="Để trống nếu giữ ảnh hiện tại" />
+                            </label>
+                          </div>
+                          <label>
+                            Trạng thái
+                            <select name="visible" defaultValue={item.visible ? "true" : "false"}>
+                              <option value="true">Đang hiện</option>
+                              <option value="false">Đã ẩn</option>
+                            </select>
+                          </label>
+                          <div className="review-actions">
+                            <button className="success-button" type="submit">
+                              <Save size={17} />
+                              Lưu
+                            </button>
+                            <button className="text-button" type="button" onClick={() => setEditingNewsId(null)}>
+                              Hủy
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          <img src={item.imageUrl} alt="" />
+                          <div>
+                            <strong>{item.title}</strong>
+                            <span>{item.visible ? "Đang hiện" : "Đã ẩn"}</span>
+                          </div>
+                          <button className="icon-button" onClick={() => setEditingNewsId(item.id)} title="Sửa ảnh">
+                            <Pencil size={18} />
+                          </button>
+                          <button className="icon-button danger-icon" onClick={() => deleteNews(item.id)} title="Xóa ảnh">
+                            <Trash2 size={18} />
+                          </button>
+                          <button
+                            className="icon-button"
+                            onClick={() => toggleNewsVisibility(item)}
+                            title={item.visible ? "Ẩn tin" : "Hiện tin"}
+                          >
+                            {item.visible ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+                          </button>
+                        </>
+                      )}
                     </article>
                   ))}
                 </div>

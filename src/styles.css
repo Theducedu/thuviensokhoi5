@@ -1367,6 +1367,10 @@ textarea:focus {
   gap: 10px;
 }
 
+.digital-edit-form {
+  padding: 16px;
+}
+
 .review-item strong {
   display: block;
   color: #17211f;
@@ -1448,13 +1452,17 @@ td span {
 
 .news-admin article {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) 38px 38px;
+  grid-template-columns: 52px minmax(0, 1fr) 38px 38px 38px;
   align-items: center;
   gap: 10px;
   min-height: 64px;
   border: 1px solid #e3ebe8;
   border-radius: 8px;
   padding: 8px;
+}
+
+.news-admin article.editing {
+  display: block;
 }
 
 .news-admin img {
