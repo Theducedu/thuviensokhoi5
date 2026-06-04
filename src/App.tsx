@@ -163,6 +163,7 @@ const digitalCategories: DigitalApp["category"][] = [
 
 const storageKey = "khoi5-library-data";
 const sessionKey = "khoi5-library-user";
+const deletedDefaultsStorageKey = "khoi5-deleted-defaults";
 const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
 const defaultGuideThumbnail =
   "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80";
@@ -378,6 +379,21 @@ function deletedDefaultDocId(kind: ContentKind, id: string) {
   return `${kind}_${id}`;
 }
 
+function loadLocalDeletedDefaultKeys() {
+  try {
+    const raw = localStorage.getItem(deletedDefaultsStorageKey);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function rememberLocalDeletedDefault(kind: ContentKind, id: string) {
+  const deletedKeys = loadLocalDeletedDefaultKeys();
+  deletedKeys.add(deletedDefaultKey(kind, id));
+  localStorage.setItem(deletedDefaultsStorageKey, JSON.stringify(Array.from(deletedKeys)));
+}
+
 function filterDeletedDefaults<T extends { id: string }>(kind: ContentKind, items: T[], deletedKeys: Set<string>) {
   return items.filter((item) => !deletedKeys.has(deletedDefaultKey(kind, item.id)));
 }
@@ -403,6 +419,7 @@ function mergeRemoteWithDefaults<T extends { id: string }>(
 }
 
 function normalizeData(data: AppData): AppData {
+  const localDeletedKeys = loadLocalDeletedDefaultKeys();
   const teachers = (data.teachers ?? seedData.teachers).map((teacher) =>
     teacher.id === "t-admin" || teacher.email.toLowerCase() === "admin@khoi5.edu.vn"
       ? {
@@ -436,6 +453,7 @@ function normalizeData(data: AppData): AppData {
   const savedDigitalAppIds = new Set(savedDigitalApps.map((app) => app.id));
   const digitalApps = [...savedDigitalApps, ...seedData.digitalApps.filter((app) => !savedDigitalAppIds.has(app.id))]
     .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
+    .filter((app) => !localDeletedKeys.has(deletedDefaultKey("digitalApps", app.id)))
     .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
   const savedGuides = (data.guides ?? seedData.guides).map((guide) => ({
     ...guide,
@@ -445,24 +463,29 @@ function normalizeData(data: AppData): AppData {
     downloadLabel: guide.downloadLabel ?? "",
   }));
   const savedGuideIds = new Set(savedGuides.map((guide) => guide.id));
-  const guides = [...savedGuides, ...seedData.guides.filter((guide) => !savedGuideIds.has(guide.id))];
+  const guides = filterDeletedDefaults("guides", [...savedGuides, ...seedData.guides.filter((guide) => !savedGuideIds.has(guide.id))], localDeletedKeys);
 
   return {
     ...data,
     teachers: normalizedTeachers,
     loginStats: data.loginStats ?? [],
+    news: filterDeletedDefaults("news", data.news ?? seedData.news, localDeletedKeys),
     guides,
     digitalApps,
-    resources: data.resources.map((resource) => ({
-      ...resource,
-      title: titleUpdates[resource.title] ?? resource.title,
-    })),
+    resources: filterDeletedDefaults(
+      "resources",
+      data.resources.map((resource) => ({
+        ...resource,
+        title: titleUpdates[resource.title] ?? resource.title,
+      })),
+      localDeletedKeys,
+    ),
   };
 }
 
 function loadData(): AppData {
   const raw = localStorage.getItem(storageKey);
-  if (!raw) return seedData;
+  if (!raw) return normalizeData(seedData);
 
   try {
     const normalized = normalizeData(JSON.parse(raw) as AppData);
@@ -804,6 +827,7 @@ export default function App() {
         return deletedDefaultKey(String(item.kind || "") as ContentKind, String(item.id || ""));
       }),
     );
+    loadLocalDeletedDefaultKeys().forEach((key) => deletedKeys.add(key));
     const remoteResources = resourceDocs.docs
       .map((snapshot) => {
         const item = snapshot.data();
@@ -1074,7 +1098,10 @@ export default function App() {
   };
 
   const markDeletedDefault = async (kind: ContentKind, id: string) => {
-    if (!db || !defaultContentIds[kind].has(id)) return;
+    if (!defaultContentIds[kind].has(id)) return;
+
+    rememberLocalDeletedDefault(kind, id);
+    if (!db) return;
 
     await setDoc(
       doc(db, "deletedDefaults", deletedDefaultDocId(kind, id)),
@@ -1108,6 +1135,21 @@ export default function App() {
     }
   };
 
+  const removeContentItem = async (kind: ContentKind, id: string, nextData: AppData, label: string) => {
+    try {
+      await deleteContentItem(kind, id);
+      setAndSaveData(nextData);
+    } catch (error) {
+      console.error(`Không xóa được ${label}:`, error);
+      if (defaultContentIds[kind].has(id)) {
+        setAndSaveData(nextData);
+        window.alert(`${label} đã được ẩn trên máy này, nhưng chưa đồng bộ được lên Firestore. Vui lòng kiểm tra Firestore Rules đã publish chưa.`);
+        return;
+      }
+      window.alert(`Chưa xóa được ${label}. Vui lòng kiểm tra Firestore Rules hoặc đăng nhập đúng tài khoản admin.`);
+    }
+  };
+
   const updateResource = (id: string, patch: Partial<Resource>) => {
     const nextResource = data.resources.find((item) => item.id === id);
     if (!nextResource) return;
@@ -1120,12 +1162,16 @@ export default function App() {
     void persistContentItem("resources", updatedResource);
   };
 
-  const deleteResource = (id: string) => {
-    setAndSaveData({
-      ...data,
-      resources: data.resources.filter((item) => item.id !== id),
-    });
-    void deleteContentItem("resources", id);
+  const deleteResource = async (id: string) => {
+    await removeContentItem(
+      "resources",
+      id,
+      {
+        ...data,
+        resources: data.resources.filter((item) => item.id !== id),
+      },
+      "tài liệu",
+    );
   };
 
   const saveResourceEdit = (event: FormEvent<HTMLFormElement>, id: string) => {
@@ -1288,12 +1334,16 @@ export default function App() {
     }
   };
 
-  const deleteNews = (id: string) => {
-    setAndSaveData({
-      ...data,
-      news: data.news.filter((item) => item.id !== id),
-    });
-    void deleteContentItem("news", id);
+  const deleteNews = async (id: string) => {
+    await removeContentItem(
+      "news",
+      id,
+      {
+        ...data,
+        news: data.news.filter((item) => item.id !== id),
+      },
+      "ảnh hoạt động",
+    );
   };
 
   const toggleNewsVisibility = (item: News) => {
@@ -1388,12 +1438,16 @@ export default function App() {
     }
   };
 
-  const deleteGuide = (id: string) => {
-    setAndSaveData({
-      ...data,
-      guides: data.guides.filter((item) => item.id !== id),
-    });
-    void deleteContentItem("guides", id);
+  const deleteGuide = async (id: string) => {
+    await removeContentItem(
+      "guides",
+      id,
+      {
+        ...data,
+        guides: data.guides.filter((item) => item.id !== id),
+      },
+      "bài CNTT-AI",
+    );
   };
 
   const saveGuideEdit = async (event: FormEvent<HTMLFormElement>, id: string) => {
@@ -1466,12 +1520,15 @@ export default function App() {
   };
 
   const deleteDigitalApp = async (id: string) => {
-    setAndSaveData({
-      ...data,
-      digitalApps: data.digitalApps.filter((item) => item.id !== id),
-    });
-
-    await deleteContentItem("digitalApps", id);
+    await removeContentItem(
+      "digitalApps",
+      id,
+      {
+        ...data,
+        digitalApps: data.digitalApps.filter((item) => item.id !== id),
+      },
+      "công cụ số",
+    );
   };
 
   const saveDigitalAppEdit = async (event: FormEvent<HTMLFormElement>, id: string) => {
@@ -2024,7 +2081,7 @@ export default function App() {
                               <button className="icon-button" onClick={() => setEditingGuideId(guide.id)} title="Sửa bài">
                                 <Pencil size={18} />
                               </button>
-                              <button className="icon-button danger-icon" onClick={() => deleteGuide(guide.id)} title="Xóa bài">
+                              <button className="icon-button danger-icon" onClick={() => void deleteGuide(guide.id)} title="Xóa bài">
                                 <Trash2 size={18} />
                               </button>
                             </div>
@@ -2205,27 +2262,67 @@ export default function App() {
                     <EmptyState title="Không có tài liệu chờ duyệt" text="Các tài liệu mới sẽ xuất hiện tại đây." />
                   )}
                   {pendingResources.map((item) => (
-                    <article key={item.id} className="review-item">
-                      <div>
-                        <strong>{item.title}</strong>
-                        <span>
-                          {item.subject} · {item.contributor} · {formatDate(item.createdAt)}
-                        </span>
-                        <p>{item.description}</p>
-                      </div>
-                      <div className="review-actions">
-                        <button
-                          className="success-button"
-                          onClick={() => updateResource(item.id, { status: "approved" })}
-                        >
-                          <CheckCircle2 size={17} />
-                          Duyệt
-                        </button>
-                        <button className="danger-button" onClick={() => updateResource(item.id, { status: "rejected" })}>
-                          <XCircle size={17} />
-                          Từ chối
-                        </button>
-                      </div>
+                    <article key={item.id} className={`review-item ${editingResourceId === item.id ? "editing" : ""}`}>
+                      {editingResourceId === item.id ? (
+                        <form className="resource-edit-form" onSubmit={(event) => saveResourceEdit(event, item.id)}>
+                          <input name="title" defaultValue={item.title} required aria-label="Tên tài liệu" />
+                          <div className="form-grid">
+                            <select name="subject" defaultValue={item.subject} aria-label="Môn">
+                              {subjects.map((subject) => (
+                                <option key={subject}>{subject}</option>
+                              ))}
+                            </select>
+                            <select name="type" defaultValue={item.type} aria-label="Loại tài liệu">
+                              <option value="lesson">Giáo án PPT</option>
+                              <option value="book">Sách tham khảo</option>
+                            </select>
+                          </div>
+                          <div className="form-grid">
+                            <input name="category" defaultValue={item.category} placeholder="Nhóm tài liệu" />
+                            <input name="week" defaultValue={item.week} placeholder="Tuần/Học kỳ" />
+                          </div>
+                          <input name="driveUrl" defaultValue={item.driveUrl} type="url" required aria-label="Link Drive" />
+                          <textarea name="description" defaultValue={item.description} rows={3} required />
+                          <div className="review-actions">
+                            <button className="success-button" type="submit">
+                              <Save size={17} />
+                              Lưu
+                            </button>
+                            <button className="text-button" type="button" onClick={() => setEditingResourceId(null)}>
+                              Hủy
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          <div>
+                            <strong>{item.title}</strong>
+                            <span>
+                              {item.subject} · {item.contributor} · {formatDate(item.createdAt)}
+                            </span>
+                            <p>{item.description}</p>
+                          </div>
+                          <div className="review-actions">
+                            <button
+                              className="success-button"
+                              onClick={() => updateResource(item.id, { status: "approved" })}
+                            >
+                              <CheckCircle2 size={17} />
+                              Duyệt
+                            </button>
+                            <button className="danger-button" onClick={() => updateResource(item.id, { status: "rejected" })}>
+                              <XCircle size={17} />
+                              Từ chối
+                            </button>
+                            <button className="icon-button" onClick={() => setEditingResourceId(item.id)} title="Sửa tài liệu">
+                              <Pencil size={18} />
+                            </button>
+                            <button className="icon-button danger-icon" onClick={() => void deleteResource(item.id)} title="Xóa tài liệu">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -2400,7 +2497,7 @@ export default function App() {
                           <button className="icon-button" onClick={() => setEditingNewsId(item.id)} title="Sửa ảnh">
                             <Pencil size={18} />
                           </button>
-                          <button className="icon-button danger-icon" onClick={() => deleteNews(item.id)} title="Xóa ảnh">
+                          <button className="icon-button danger-icon" onClick={() => void deleteNews(item.id)} title="Xóa ảnh">
                             <Trash2 size={18} />
                           </button>
                           <button
@@ -2470,7 +2567,7 @@ export default function App() {
                         <button className="icon-button" onClick={() => setEditingResourceId(item.id)} title="Sửa">
                           <Pencil size={18} />
                         </button>
-                        <button className="icon-button danger-icon" onClick={() => deleteResource(item.id)} title="Xóa">
+                        <button className="icon-button danger-icon" onClick={() => void deleteResource(item.id)} title="Xóa">
                           <Trash2 size={18} />
                         </button>
                       </>
