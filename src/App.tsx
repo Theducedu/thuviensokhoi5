@@ -266,18 +266,6 @@ const seedData: AppData = {
   ],
   digitalApps: [
     {
-      id: "d-1",
-      title: "Khối hộp chữ nhật 3D",
-      category: "Hình học 3D",
-      subject: "Toán",
-      description: "Mô hình trực quan giúp học sinh quan sát đỉnh, cạnh, mặt của hình hộp chữ nhật.",
-      appUrl: "https://www.geogebra.org/3d",
-      thumbnailUrl:
-        "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=900&q=80",
-      author: "Ban quản trị",
-      createdAt: "2026-06-04T08:00:00.000Z",
-    },
-    {
       id: "d-3",
       title: "Kho hình học 3D",
       category: "Hình học 3D",
@@ -285,18 +273,6 @@ const seedData: AppData = {
       description: "Kho mô hình hình học 3D trực quan, hỗ trợ học sinh quan sát và tương tác với các khối hình.",
       appUrl: "/hinh-hoc-3d/index.html",
       thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg",
-      author: "Ban quản trị",
-      createdAt: "2026-06-04T08:00:00.000Z",
-    },
-    {
-      id: "d-2",
-      title: "Trò chơi luyện từ vựng",
-      category: "Game học tập",
-      subject: "Tiếng Anh",
-      description: "Liên kết tới trò chơi luyện nhanh từ vựng, phù hợp hoạt động khởi động tiết học.",
-      appUrl: "https://wordwall.net",
-      thumbnailUrl:
-        "https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?auto=format&fit=crop&w=900&q=80",
       author: "Ban quản trị",
       createdAt: "2026-06-04T08:00:00.000Z",
     },
@@ -308,6 +284,8 @@ const titleUpdates: Record<string, string> = {
   "Ôn tập đọc hiểu cuối học kỳ I": "Tiếng Việt 5 - Bộ phiếu đọc hiểu học kỳ I",
   "Năng lượng mặt trời và ứng dụng": "Khoa học 5 - Năng lượng mặt trời",
 };
+
+const removedDefaultDigitalAppIds = new Set(["d-1", "d-2"]);
 
 function normalizeData(data: AppData): AppData {
   const teachers = (data.teachers ?? seedData.teachers).map((teacher) =>
@@ -339,9 +317,9 @@ function normalizeData(data: AppData): AppData {
         },
         ...teachers,
       ];
-  const digitalApps = (data.digitalApps ?? seedData.digitalApps).map((app) =>
-    app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app,
-  );
+  const digitalApps = (data.digitalApps ?? seedData.digitalApps)
+    .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
+    .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
   const requiredDigitalApps = seedData.digitalApps.filter(
     (seedApp) => seedApp.id === "d-3" && !digitalApps.some((app) => app.id === seedApp.id),
   );
@@ -650,12 +628,46 @@ export default function App() {
     );
   };
 
+  const refreshRemoteDigitalApps = async () => {
+    if (!db) return;
+
+    const digitalDocs = await getDocs(collection(db, "digitalApps"));
+    const remoteDigitalApps = digitalDocs.docs
+      .map((snapshot) => {
+        const item = snapshot.data();
+        return {
+          id: String(item.id || snapshot.id),
+          title: String(item.title || ""),
+          category: String(item.category || "Hình học 3D") as DigitalApp["category"],
+          subject: String(item.subject || "Tất cả các môn"),
+          description: String(item.description || ""),
+          appUrl: String(item.appUrl || ""),
+          thumbnailUrl: String(item.thumbnailUrl || ""),
+          author: String(item.author || "Ban quản trị"),
+          createdAt: toIsoDate(item.createdAt),
+        } satisfies DigitalApp;
+      })
+      .filter((app) => app.title && app.appUrl && !removedDefaultDigitalAppIds.has(app.id));
+
+    updateAndSaveData((current) => ({
+      ...current,
+      digitalApps: remoteDigitalApps.length ? remoteDigitalApps : seedData.digitalApps,
+    }));
+  };
+
   useEffect(() => {
     if (user?.role !== "admin") return;
     void refreshRemoteAccessData().catch(() => {
       setLoginError("");
     });
   }, [user?.role]);
+
+  useEffect(() => {
+    if (!user) return;
+    void refreshRemoteDigitalApps().catch(() => {
+      setLoginError("");
+    });
+  }, [user?.email]);
 
   useEffect(() => {
     if (!user) return;
@@ -1023,7 +1035,7 @@ export default function App() {
     });
   };
 
-  const addDigitalApp = (event: FormEvent<HTMLFormElement>) => {
+  const addDigitalApp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || user.role !== "admin") return;
 
@@ -1041,14 +1053,28 @@ export default function App() {
     };
 
     setAndSaveData({ ...data, digitalApps: [next, ...data.digitalApps] });
+    if (db) {
+      await setDoc(
+        doc(db, "digitalApps", next.id),
+        {
+          ...next,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
     event.currentTarget.reset();
   };
 
-  const deleteDigitalApp = (id: string) => {
+  const deleteDigitalApp = async (id: string) => {
     setAndSaveData({
       ...data,
       digitalApps: data.digitalApps.filter((item) => item.id !== id),
     });
+
+    if (db) {
+      await deleteDoc(doc(db, "digitalApps", id));
+    }
   };
 
   const navItems: Array<{ id: View; label: string; icon: typeof Gauge; adminOnly?: boolean }> = [
@@ -1573,7 +1599,7 @@ export default function App() {
                               Mở
                             </button>
                             {user?.role === "admin" && (
-                              <button className="icon-button danger-icon" onClick={() => deleteDigitalApp(app.id)} title="Xóa ứng dụng">
+                              <button className="icon-button danger-icon" onClick={() => void deleteDigitalApp(app.id)} title="Xóa ứng dụng">
                                 <Trash2 size={18} />
                               </button>
                             )}

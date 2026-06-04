@@ -24,5 +24,10 @@ service cloud.firestore {
       allow create, update: if isOwnLoginStat(email);
       allow delete: if isAdmin();
     }
+
+    match /digitalApps/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
