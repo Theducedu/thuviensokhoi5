@@ -120,6 +120,8 @@ type AppData = {
   visits: number;
 };
 
+type ContentKind = "resources" | "news" | "guides" | "digitalApps";
+
 type CurrentUser = {
   name: string;
   email: string;
@@ -286,6 +288,41 @@ const titleUpdates: Record<string, string> = {
 };
 
 const removedDefaultDigitalAppIds = new Set(["d-1", "d-2"]);
+const contentCollections: Record<ContentKind, string> = {
+  resources: "resources",
+  news: "news",
+  guides: "guides",
+  digitalApps: "digitalApps",
+};
+const defaultContentIds: Record<ContentKind, Set<string>> = {
+  resources: new Set(seedData.resources.map((item) => item.id)),
+  news: new Set(seedData.news.map((item) => item.id)),
+  guides: new Set(seedData.guides.map((item) => item.id)),
+  digitalApps: new Set(seedData.digitalApps.map((item) => item.id)),
+};
+
+function deletedDefaultKey(kind: ContentKind, id: string) {
+  return `${kind}:${id}`;
+}
+
+function deletedDefaultDocId(kind: ContentKind, id: string) {
+  return `${kind}_${id}`;
+}
+
+function filterDeletedDefaults<T extends { id: string }>(kind: ContentKind, items: T[], deletedKeys: Set<string>) {
+  return items.filter((item) => !deletedKeys.has(deletedDefaultKey(kind, item.id)));
+}
+
+function mergeRemoteWithDefaults<T extends { id: string }>(
+  kind: ContentKind,
+  defaults: T[],
+  remoteItems: T[],
+  deletedKeys: Set<string>,
+) {
+  const remoteIds = new Set(remoteItems.map((item) => item.id));
+  const fallbackDefaults = defaults.filter((item) => !remoteIds.has(item.id));
+  return filterDeletedDefaults(kind, [...remoteItems, ...fallbackDefaults], deletedKeys);
+}
 
 function normalizeData(data: AppData): AppData {
   const teachers = (data.teachers ?? seedData.teachers).map((teacher) =>
@@ -320,16 +357,13 @@ function normalizeData(data: AppData): AppData {
   const digitalApps = (data.digitalApps ?? seedData.digitalApps)
     .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
     .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
-  const requiredDigitalApps = seedData.digitalApps.filter(
-    (seedApp) => seedApp.id === "d-3" && !digitalApps.some((app) => app.id === seedApp.id),
-  );
 
   return {
     ...data,
     teachers: normalizedTeachers,
     loginStats: data.loginStats ?? [],
     guides: data.guides ?? seedData.guides,
-    digitalApps: [...requiredDigitalApps, ...digitalApps],
+    digitalApps,
     resources: data.resources.map((resource) => ({
       ...resource,
       title: titleUpdates[resource.title] ?? resource.title,
@@ -628,10 +662,70 @@ export default function App() {
     );
   };
 
-  const refreshRemoteDigitalApps = async () => {
+  const refreshRemoteContentData = async () => {
     if (!db) return;
 
-    const digitalDocs = await getDocs(collection(db, "digitalApps"));
+    const [resourceDocs, newsDocs, guideDocs, digitalDocs, deletedDocs] = await Promise.all([
+      getDocs(collection(db, contentCollections.resources)),
+      getDocs(collection(db, contentCollections.news)),
+      getDocs(collection(db, contentCollections.guides)),
+      getDocs(collection(db, contentCollections.digitalApps)),
+      getDocs(collection(db, "deletedDefaults")),
+    ]);
+    const deletedKeys = new Set(
+      deletedDocs.docs.map((snapshot) => {
+        const item = snapshot.data();
+        return deletedDefaultKey(String(item.kind || "") as ContentKind, String(item.id || ""));
+      }),
+    );
+    const remoteResources = resourceDocs.docs
+      .map((snapshot) => {
+        const item = snapshot.data();
+        return {
+          id: String(item.id || snapshot.id),
+          title: String(item.title || ""),
+          subject: String(item.subject || subjects[0]),
+          type: item.type === "book" ? "book" : "lesson",
+          category: String(item.category || "Tài liệu"),
+          week: String(item.week || ""),
+          contributor: String(item.contributor || "Ban quản trị"),
+          driveUrl: String(item.driveUrl || ""),
+          description: String(item.description || ""),
+          status: item.status === "pending" || item.status === "rejected" ? item.status : "approved",
+          views: Number(item.views || 0),
+          opens: Number(item.opens || 0),
+          createdAt: toIsoDate(item.createdAt),
+        } satisfies Resource;
+      })
+      .filter((item) => item.title && item.driveUrl);
+    const remoteNews = newsDocs.docs
+      .map((snapshot) => {
+        const item = snapshot.data();
+        return {
+          id: String(item.id || snapshot.id),
+          title: String(item.title || ""),
+          summary: String(item.summary || ""),
+          imageUrl: String(item.imageUrl || ""),
+          author: String(item.author || "Ban quản trị"),
+          visible: item.visible !== false,
+          createdAt: toIsoDate(item.createdAt),
+        } satisfies News;
+      })
+      .filter((item) => item.title && item.imageUrl);
+    const remoteGuides = guideDocs.docs
+      .map((snapshot) => {
+        const item = snapshot.data();
+        return {
+          id: String(item.id || snapshot.id),
+          title: String(item.title || ""),
+          content: String(item.content || ""),
+          linkUrl: String(item.linkUrl || ""),
+          linkLabel: String(item.linkLabel || "Mở liên kết"),
+          author: String(item.author || "Ban quản trị"),
+          createdAt: toIsoDate(item.createdAt),
+        } satisfies Guide;
+      })
+      .filter((item) => item.title && item.content);
     const remoteDigitalApps = digitalDocs.docs
       .map((snapshot) => {
         const item = snapshot.data();
@@ -651,7 +745,10 @@ export default function App() {
 
     updateAndSaveData((current) => ({
       ...current,
-      digitalApps: remoteDigitalApps.length ? remoteDigitalApps : seedData.digitalApps,
+      resources: mergeRemoteWithDefaults("resources", seedData.resources, remoteResources, deletedKeys),
+      news: mergeRemoteWithDefaults("news", seedData.news, remoteNews, deletedKeys),
+      guides: mergeRemoteWithDefaults("guides", seedData.guides, remoteGuides, deletedKeys),
+      digitalApps: mergeRemoteWithDefaults("digitalApps", seedData.digitalApps, remoteDigitalApps, deletedKeys),
     }));
   };
 
@@ -664,7 +761,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    void refreshRemoteDigitalApps().catch(() => {
+    void refreshRemoteContentData().catch(() => {
       setLoginError("");
     });
   }, [user?.email]);
@@ -846,11 +943,51 @@ export default function App() {
     return false;
   };
 
+  const markDeletedDefault = async (kind: ContentKind, id: string) => {
+    if (!db || !defaultContentIds[kind].has(id)) return;
+
+    await setDoc(
+      doc(db, "deletedDefaults", deletedDefaultDocId(kind, id)),
+      {
+        kind,
+        id,
+        deletedBy: user?.email ?? "",
+        deletedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
+  const persistContentItem = async (kind: ContentKind, item: Resource | News | Guide | DigitalApp) => {
+    if (!db) return;
+
+    await setDoc(
+      doc(db, contentCollections[kind], item.id),
+      {
+        ...item,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  };
+
+  const deleteContentItem = async (kind: ContentKind, id: string) => {
+    await markDeletedDefault(kind, id);
+    if (db) {
+      await deleteDoc(doc(db, contentCollections[kind], id));
+    }
+  };
+
   const updateResource = (id: string, patch: Partial<Resource>) => {
+    const nextResource = data.resources.find((item) => item.id === id);
+    if (!nextResource) return;
+    const updatedResource = { ...nextResource, ...patch };
+
     setAndSaveData({
       ...data,
-      resources: data.resources.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      resources: data.resources.map((item) => (item.id === id ? updatedResource : item)),
     });
+    void persistContentItem("resources", updatedResource);
   };
 
   const deleteResource = (id: string) => {
@@ -858,6 +995,7 @@ export default function App() {
       ...data,
       resources: data.resources.filter((item) => item.id !== id),
     });
+    void deleteContentItem("resources", id);
   };
 
   const saveResourceEdit = (event: FormEvent<HTMLFormElement>, id: string) => {
@@ -908,6 +1046,7 @@ export default function App() {
     };
 
     setAndSaveData({ ...data, resources: [next, ...data.resources] });
+    void persistContentItem("resources", next);
     event.currentTarget.reset();
     setView(user.role === "admin" ? "admin" : "resources");
   };
@@ -978,7 +1117,7 @@ export default function App() {
 
   const addNews = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!user) return;
+    if (!user || user.role !== "admin") return;
 
     const form = new FormData(event.currentTarget);
     const imageFile = form.get("imageFile");
@@ -999,6 +1138,7 @@ export default function App() {
     };
 
     setAndSaveData({ ...data, news: [next, ...data.news] });
+    await persistContentItem("news", next);
     event.currentTarget.reset();
   };
 
@@ -1007,9 +1147,20 @@ export default function App() {
       ...data,
       news: data.news.filter((item) => item.id !== id),
     });
+    void deleteContentItem("news", id);
   };
 
-  const addGuide = (event: FormEvent<HTMLFormElement>) => {
+  const toggleNewsVisibility = (item: News) => {
+    const updatedNews = { ...item, visible: !item.visible };
+
+    setAndSaveData({
+      ...data,
+      news: data.news.map((newsItem) => (newsItem.id === item.id ? updatedNews : newsItem)),
+    });
+    void persistContentItem("news", updatedNews);
+  };
+
+  const addGuide = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user || user.role !== "admin") return;
 
@@ -1025,6 +1176,7 @@ export default function App() {
     };
 
     setAndSaveData({ ...data, guides: [next, ...data.guides] });
+    await persistContentItem("guides", next);
     event.currentTarget.reset();
   };
 
@@ -1033,6 +1185,7 @@ export default function App() {
       ...data,
       guides: data.guides.filter((item) => item.id !== id),
     });
+    void deleteContentItem("guides", id);
   };
 
   const addDigitalApp = async (event: FormEvent<HTMLFormElement>) => {
@@ -1053,16 +1206,7 @@ export default function App() {
     };
 
     setAndSaveData({ ...data, digitalApps: [next, ...data.digitalApps] });
-    if (db) {
-      await setDoc(
-        doc(db, "digitalApps", next.id),
-        {
-          ...next,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-    }
+    await persistContentItem("digitalApps", next);
     event.currentTarget.reset();
   };
 
@@ -1072,9 +1216,7 @@ export default function App() {
       digitalApps: data.digitalApps.filter((item) => item.id !== id),
     });
 
-    if (db) {
-      await deleteDoc(doc(db, "digitalApps", id));
-    }
+    await deleteContentItem("digitalApps", id);
   };
 
   const navItems: Array<{ id: View; label: string; icon: typeof Gauge; adminOnly?: boolean }> = [
@@ -1789,14 +1931,7 @@ export default function App() {
                       </button>
                       <button
                         className="icon-button"
-                        onClick={() =>
-                          setAndSaveData({
-                            ...data,
-                            news: data.news.map((newsItem) =>
-                              newsItem.id === item.id ? { ...newsItem, visible: !newsItem.visible } : newsItem,
-                            ),
-                          })
-                        }
+                        onClick={() => toggleNewsVisibility(item)}
                         title={item.visible ? "Ẩn tin" : "Hiện tin"}
                       >
                         {item.visible ? <XCircle size={18} /> : <CheckCircle2 size={18} />}

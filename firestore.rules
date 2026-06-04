@@ -14,6 +14,12 @@ service cloud.firestore {
       return signedIn() && request.auth.token.email == email;
     }
 
+    function isStaff() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/authorizedUsers/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/authorizedUsers/$(request.auth.token.email)).data.active == true;
+    }
+
     match /authorizedUsers/{email} {
       allow read: if isAdmin() || (signedIn() && request.auth.token.email == email);
       allow create, update, delete: if isAdmin();
@@ -25,7 +31,28 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /resources/{id} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() || isStaff();
+      allow delete: if isAdmin();
+    }
+
+    match /news/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /guides/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /digitalApps/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /deletedDefaults/{id} {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
     }
