@@ -11,7 +11,6 @@
   ImagePlus,
   Library,
   LogOut,
-  Mail,
   Megaphone,
   Pencil,
   Plus,
@@ -126,6 +125,7 @@ const resourceTypes: Record<ResourceType, string> = {
 
 const storageKey = "khoi5-library-data";
 const sessionKey = "khoi5-library-user";
+const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
 
 const today = new Date().toISOString();
 
@@ -135,9 +135,9 @@ const seedData: AppData = {
     {
       id: "t-admin",
       name: "Quản trị Khối 5",
-      email: "admin@khoi5.edu.vn",
+      email: primaryAdminEmail,
       subject: "Quản trị",
-      code: "ADMIN-2026",
+      code: "",
       role: "admin",
       active: true,
     },
@@ -146,7 +146,7 @@ const seedData: AppData = {
       name: "Cô Lan",
       email: "lan@khoi5.edu.vn",
       subject: "Toán",
-      code: "GV5-LAN-2026",
+      code: "",
       role: "teacher",
       active: true,
     },
@@ -155,7 +155,7 @@ const seedData: AppData = {
       name: "Thầy Minh",
       email: "minh@khoi5.edu.vn",
       subject: "Khoa học",
-      code: "GV5-MINH-2026",
+      code: "",
       role: "teacher",
       active: true,
     },
@@ -276,8 +276,39 @@ const titleUpdates: Record<string, string> = {
 };
 
 function normalizeData(data: AppData): AppData {
+  const teachers = (data.teachers ?? seedData.teachers).map((teacher) =>
+    teacher.id === "t-admin" || teacher.email.toLowerCase() === "admin@khoi5.edu.vn"
+      ? {
+          ...teacher,
+          name: "Quản trị Khối 5",
+          email: primaryAdminEmail,
+          subject: "Quản trị",
+          code: "",
+          role: "admin" as Role,
+          active: true,
+        }
+      : { ...teacher, code: teacher.code ?? "" },
+  );
+
+  const hasPrimaryAdmin = teachers.some((teacher) => teacher.email.toLowerCase() === primaryAdminEmail);
+  const normalizedTeachers = hasPrimaryAdmin
+    ? teachers
+    : [
+        {
+          id: "t-admin",
+          name: "Quản trị Khối 5",
+          email: primaryAdminEmail,
+          subject: "Quản trị",
+          code: "",
+          role: "admin" as Role,
+          active: true,
+        },
+        ...teachers,
+      ];
+
   return {
     ...data,
+    teachers: normalizedTeachers,
     guides: data.guides ?? seedData.guides,
     digitalApps: data.digitalApps ?? seedData.digitalApps,
     resources: data.resources.map((resource) => ({
@@ -451,10 +482,7 @@ export default function App() {
   const [data, setData] = useState<AppData>(() => loadData());
   const [user, setUser] = useState<CurrentUser | null>(() => loadUser());
   const [view, setView] = useState<View>("dashboard");
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginCode, setLoginCode] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [verifiedGoogleEmail, setVerifiedGoogleEmail] = useState("");
   const [googleAuthMessage, setGoogleAuthMessage] = useState("");
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -474,6 +502,32 @@ export default function App() {
   const approvedResources = data.resources.filter((item) => item.status === "approved");
   const pendingResources = data.resources.filter((item) => item.status === "pending");
   const visibleNews = data.news.filter((item) => item.visible);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const teacher = data.teachers.find(
+      (item) => item.email.toLowerCase() === user.email.toLowerCase() && item.active,
+    );
+
+    if (!teacher) {
+      setUser(null);
+      localStorage.removeItem(sessionKey);
+      if (view === "admin") setView("dashboard");
+      return;
+    }
+
+    if (teacher.role !== user.role || teacher.name !== user.name || teacher.subject !== user.subject) {
+      const nextUser: CurrentUser = {
+        name: teacher.name,
+        email: teacher.email,
+        role: teacher.role,
+        subject: teacher.subject,
+      };
+      setUser(nextUser);
+      localStorage.setItem(sessionKey, JSON.stringify(nextUser));
+    }
+  }, [data.teachers, user, view]);
 
   const stats = useMemo(() => {
     const opens = data.resources.reduce((sum, item) => sum + item.opens, 0);
@@ -495,53 +549,6 @@ export default function App() {
     return matchesQuery && matchesSubject && matchesType;
   });
 
-  const login = (event: FormEvent) => {
-    event.preventDefault();
-    const typedEmail = loginEmail.trim().toLowerCase();
-
-    if (isFirebaseAuthReady && !verifiedGoogleEmail) {
-      setLoginError("Vui lòng bấm Đăng nhập Google trước, sau đó nhập mã giáo viên.");
-      return;
-    }
-
-    if (verifiedGoogleEmail && typedEmail !== verifiedGoogleEmail.toLowerCase()) {
-      setLoginError("Email trong ô nhập chưa khớp với tài khoản Google vừa xác minh.");
-      return;
-    }
-
-    const teacher = data.teachers.find(
-      (item) =>
-        item.email.toLowerCase() === typedEmail &&
-        item.code === loginCode.trim() &&
-        item.active,
-    );
-
-    if (!teacher) {
-      setLoginError("Email hoặc mã giáo viên chưa đúng.");
-      return;
-    }
-
-    const nextUser: CurrentUser = {
-      name: teacher.name,
-      email: teacher.email,
-      role: teacher.role,
-      subject: teacher.subject,
-    };
-
-    const nextData = { ...data, visits: data.visits + 1 };
-    setAndSaveData(nextData);
-    setUser(nextUser);
-    localStorage.setItem(sessionKey, JSON.stringify(nextUser));
-    setLoginError("");
-    setGoogleAuthMessage("");
-    setVerifiedGoogleEmail("");
-    setShowAuthModal(false);
-    if (pendingView) {
-      setView(pendingView);
-      setPendingView(null);
-    }
-  };
-
   const logout = () => {
     setUser(null);
     localStorage.removeItem(sessionKey);
@@ -554,7 +561,7 @@ export default function App() {
     setGoogleAuthMessage("");
 
     if (!isFirebaseAuthReady) {
-      setLoginError("Chưa cấu hình Firebase Google Auth. Hiện có thể dùng email + mã demo để xem thử.");
+      setLoginError("Chưa cấu hình Firebase Google Auth. Vui lòng kiểm tra biến môi trường trên Vercel.");
       return;
     }
 
@@ -567,10 +574,33 @@ export default function App() {
         return;
       }
 
-      setLoginEmail(googleUser.email);
-      setLoginCode("");
-      setVerifiedGoogleEmail(googleUser.email);
-      setGoogleAuthMessage("Đã xác minh Google thành công. Nhập mã giáo viên để hoàn tất.");
+      const teacher = data.teachers.find(
+        (item) => item.email.toLowerCase() === googleUser.email.toLowerCase() && item.active,
+      );
+
+      if (!teacher) {
+        setLoginError("Email Google này chưa được admin cấp quyền tải/đóng góp.");
+        return;
+      }
+
+      const nextUser: CurrentUser = {
+        name: teacher.name || googleUser.displayName || teacher.email,
+        email: teacher.email,
+        role: teacher.role,
+        subject: teacher.subject,
+      };
+
+      const nextData = { ...data, visits: data.visits + 1 };
+      setAndSaveData(nextData);
+      setUser(nextUser);
+      localStorage.setItem(sessionKey, JSON.stringify(nextUser));
+      setLoginError("");
+      setGoogleAuthMessage("");
+      setShowAuthModal(false);
+      if (pendingView) {
+        setView(pendingView);
+        setPendingView(null);
+      }
     } catch {
       setLoginError("Không đăng nhập Google được. Kiểm tra Firebase Auth và domain đã cấp quyền.");
     } finally {
@@ -657,18 +687,32 @@ export default function App() {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const role = form.get("role") as Role;
+    const email = String(form.get("email") || "").trim().toLowerCase();
+    const existingTeacher = data.teachers.find((teacher) => teacher.email.toLowerCase() === email);
     const next: Teacher = {
-      id: createId("t"),
+      id: existingTeacher?.id ?? createId("t"),
       name: String(form.get("name") || ""),
-      email: String(form.get("email") || ""),
+      email,
       subject: String(form.get("subject") || subjects[0]),
-      code: String(form.get("code") || ""),
+      code: "",
       role,
       active: true,
     };
 
-    setAndSaveData({ ...data, teachers: [next, ...data.teachers] });
+    setAndSaveData({
+      ...data,
+      teachers: existingTeacher
+        ? data.teachers.map((teacher) => (teacher.id === existingTeacher.id ? next : teacher))
+        : [next, ...data.teachers],
+    });
     event.currentTarget.reset();
+  };
+
+  const deleteTeacher = (id: string) => {
+    setAndSaveData({
+      ...data,
+      teachers: data.teachers.filter((teacher) => teacher.id !== id),
+    });
   };
 
   const addNews = async (event: FormEvent<HTMLFormElement>) => {
@@ -758,75 +802,6 @@ export default function App() {
     });
   };
 
-  if (!user && false) {
-    return (
-      <main className="login-shell">
-        <section className="login-hero">
-          <div className="login-copy">
-            <div className="school-lockup">
-              <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
-              <span className="eyebrow">Trường Tiểu học Nguyễn Đình Chiểu</span>
-            </div>
-            <h1>Thư viện số Khối 5</h1>
-            <p>Kho giáo án, sách tham khảo và album ảnh hoạt động dành cho giáo viên.</p>
-          </div>
-        </section>
-        <section className="login-panel" aria-label="Đăng nhập">
-          <div className="brand-row">
-            <div className="brand-mark">
-              <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
-            </div>
-            <div>
-              <strong>Trường Nguyễn Đình Chiểu</strong>
-              <span>Cổng tài nguyên Khối 5</span>
-            </div>
-          </div>
-          <form onSubmit={login} className="login-form">
-            <label>
-              Email Gmail
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(event) => {
-                  setLoginEmail(event.target.value);
-                  setVerifiedGoogleEmail("");
-                  setGoogleAuthMessage("");
-                }}
-                placeholder="ten@truong.edu.vn"
-                required
-              />
-            </label>
-            <label>
-              Mã giáo viên
-              <input
-                type="password"
-                value={loginCode}
-                onChange={(event) => setLoginCode(event.target.value)}
-                placeholder="GV5-..."
-                required
-              />
-            </label>
-            {loginError && <p className="form-error">{loginError}</p>}
-            <button
-              className="google-button"
-              type="button"
-              onClick={loginWithGoogle}
-              disabled={isGoogleSigningIn}
-            >
-              <Chrome size={18} />
-              {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
-            </button>
-            {googleAuthMessage && <p className="auth-note success">{googleAuthMessage}</p>}
-            <button className="primary-button" type="submit">
-              <Mail size={18} />
-              Xác thực mã
-            </button>
-          </form>
-        </section>
-      </main>
-    );
-  }
-
   const navItems: Array<{ id: View; label: string; icon: typeof Gauge; adminOnly?: boolean }> = [
     { id: "dashboard", label: "Tổng quan", icon: Gauge },
     { id: "resources", label: "Thư viện", icon: Library },
@@ -886,7 +861,7 @@ export default function App() {
             <span className="avatar">K</span>
             <div>
               <strong>Khách xem</strong>
-              <span>Cần mã để tải/đóng góp</span>
+              <span>Cần cấp quyền để tải/đóng góp</span>
             </div>
             <button onClick={() => setShowAuthModal(true)} className="icon-button" title="Đăng nhập Google">
               <Chrome size={18} />
@@ -1364,7 +1339,7 @@ export default function App() {
 
               <div className="admin-panel">
                 <div className="section-heading">
-                  <h3>Thêm giáo viên</h3>
+                  <h3>Cấp quyền email</h3>
                 </div>
                 <form className="editor-form compact" onSubmit={addTeacher}>
                   <input name="name" required placeholder="Họ tên" />
@@ -1380,10 +1355,9 @@ export default function App() {
                       <option value="admin">Admin</option>
                     </select>
                   </div>
-                  <input name="code" required placeholder="Mã truy cập" />
                   <button className="primary-button" type="submit">
                     <Plus size={18} />
-                    Cấp mã
+                    Thêm email
                   </button>
                 </form>
               </div>
@@ -1400,9 +1374,9 @@ export default function App() {
                       <tr>
                         <th>Giáo viên</th>
                         <th>Môn</th>
-                        <th>Mã</th>
                         <th>Quyền</th>
-                        <th>TT</th>
+                        <th>Truy cập</th>
+                        <th>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1413,7 +1387,6 @@ export default function App() {
                             <span>{teacher.email}</span>
                           </td>
                           <td>{teacher.subject}</td>
-                          <td>{teacher.code}</td>
                           <td>{teacher.role === "admin" ? "Admin" : "GV"}</td>
                           <td>
                             <button
@@ -1426,9 +1399,19 @@ export default function App() {
                                   ),
                                 })
                               }
-                              title={teacher.active ? "Đang hoạt động" : "Đã khóa"}
+                              title={teacher.active ? "Thu hồi truy cập" : "Cấp lại truy cập"}
                             >
                               <span />
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              className="icon-button danger-icon"
+                              onClick={() => deleteTeacher(teacher.id)}
+                              title="Xóa email"
+                              disabled={teacher.email.toLowerCase() === primaryAdminEmail}
+                            >
+                              <Trash2 size={18} />
                             </button>
                           </td>
                         </tr>
@@ -1555,7 +1538,7 @@ export default function App() {
               </div>
               <div>
                 <strong>Đăng nhập Google</strong>
-                <span>Xác minh Gmail rồi nhập mã giáo viên do admin cấp</span>
+                <span>Email phải nằm trong danh sách được admin cấp quyền</span>
               </div>
             </div>
             <button
@@ -1568,51 +1551,18 @@ export default function App() {
               {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
             </button>
             {googleAuthMessage && <p className="auth-note success">{googleAuthMessage}</p>}
-            <form onSubmit={login} className="login-form">
-              <label>
-                Email Gmail
-                <input
-                  type="email"
-                  value={loginEmail}
-                  onChange={(event) => {
-                    setLoginEmail(event.target.value);
-                    setVerifiedGoogleEmail("");
-                    setGoogleAuthMessage("");
-                  }}
-                  placeholder="ten@truong.edu.vn"
-                  readOnly={Boolean(verifiedGoogleEmail)}
-                  required
-                />
-              </label>
-              <label>
-                Mã giáo viên
-                <input
-                  type="password"
-                  value={loginCode}
-                  onChange={(event) => setLoginCode(event.target.value)}
-                  placeholder="GV5-..."
-                  required
-                />
-              </label>
-              {loginError && <p className="form-error">{loginError}</p>}
-              <div className="auth-actions">
-                <button className="primary-button" type="submit">
-                  <Mail size={18} />
-                  Xác thực mã
-                </button>
-                <button
-                  className="text-button"
-                  type="button"
-                  onClick={() => {
-                    setShowAuthModal(false);
-                    setPendingView(null);
-                    setLoginError("");
-                  }}
-                >
-                  Để sau
-                </button>
-              </div>
-            </form>
+            {loginError && <p className="form-error">{loginError}</p>}
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => {
+                setShowAuthModal(false);
+                setPendingView(null);
+                setLoginError("");
+              }}
+            >
+              Để sau
+            </button>
           </section>
         </div>
       )}
