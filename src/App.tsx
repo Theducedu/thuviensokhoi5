@@ -808,7 +808,9 @@ export default function App() {
   const requireStaffAccess = (nextView?: View) => {
     if (!requireGoogleAccess(nextView)) return false;
     if (hasStaffAccess) return true;
-    setLoginError("Email Google này chỉ có quyền xem. Admin cần cấp quyền để tải/đóng góp.");
+    setLoginError(
+      `Gmail ${user?.email ?? "này"} chỉ có quyền xem. Vui lòng liên hệ admin để được cấp quyền tải tài liệu hoặc đóng góp.`,
+    );
     setPendingView(nextView ?? null);
     setShowAuthModal(true);
     return false;
@@ -1807,19 +1809,25 @@ export default function App() {
                 <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
               </div>
               <div>
-                <strong>Đăng nhập Google</strong>
-                <span>Email phải nằm trong danh sách được admin cấp quyền</span>
+                <strong>{user ? "Chưa được cấp quyền tải" : "Đăng nhập Google"}</strong>
+                <span>
+                  {user
+                    ? "Tài khoản này đang chỉ có quyền xem nội dung."
+                    : "Đăng nhập để xem và ghi nhận thống kê truy cập"}
+                </span>
               </div>
             </div>
-            <button
-              className="google-button"
-              type="button"
-              onClick={loginWithGoogle}
-              disabled={isGoogleSigningIn}
-            >
-              <Chrome size={18} />
-              {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
-            </button>
+            {!user && (
+              <button
+                className="google-button"
+                type="button"
+                onClick={loginWithGoogle}
+                disabled={isGoogleSigningIn}
+              >
+                <Chrome size={18} />
+                {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
+              </button>
+            )}
             {googleAuthMessage && <p className="auth-note success">{googleAuthMessage}</p>}
             {loginError && <p className="form-error">{loginError}</p>}
             <button
