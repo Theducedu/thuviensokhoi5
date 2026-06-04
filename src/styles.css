@@ -54,6 +54,7 @@ button {
 
   .sidebar nav button svg,
   .primary-button svg,
+  .google-button svg,
   .success-button svg,
   .danger-button svg,
   .icon-button svg,
@@ -63,6 +64,7 @@ button {
 }
 
 .primary-button:hover,
+.google-button:hover,
 .success-button:hover,
 .danger-button:hover,
 .text-button:hover,
@@ -71,6 +73,7 @@ button {
 }
 
 .primary-button:hover svg,
+.google-button:hover svg,
 .success-button:hover svg,
 .danger-button:hover svg,
 .text-button:hover svg,
@@ -264,6 +267,19 @@ textarea:focus {
   font-weight: 700;
 }
 
+.auth-note {
+  margin: -4px 0 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.auth-note.success {
+  background: #e1f4e9;
+  color: #176b3b;
+}
+
 .demo-access {
   display: grid;
   gap: 8px;
@@ -274,6 +290,7 @@ textarea:focus {
 }
 
 .primary-button,
+.google-button,
 .success-button,
 .danger-button,
 .text-button,
@@ -292,6 +309,26 @@ textarea:focus {
   background: #0f6d58;
   color: #ffffff;
   padding: 0 18px;
+}
+
+.google-button {
+  width: 100%;
+  border: 1px solid #d8e0de;
+  background: #ffffff;
+  color: #17211f;
+  padding: 0 18px;
+  box-shadow: 0 10px 24px rgba(26, 44, 39, 0.06);
+}
+
+.google-button:hover {
+  border-color: #bfcfca;
+  background: #f8fbfa;
+}
+
+.google-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+  transform: none;
 }
 
 .primary-button.small {
@@ -1591,6 +1628,7 @@ td span {
   }
 
   .primary-button,
+  .google-button,
   .success-button,
   .danger-button {
     width: 100%;

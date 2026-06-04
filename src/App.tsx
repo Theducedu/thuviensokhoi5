@@ -1,6 +1,7 @@
 ﻿import {
   BarChart3,
   CheckCircle2,
+  Chrome,
   ClipboardList,
   ExternalLink,
   FileText,
@@ -24,6 +25,7 @@
   XCircle,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { isFirebaseAuthReady, signInWithGoogle, signOutGoogle } from "./firebase";
 import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 
 type Role = "teacher" | "admin";
@@ -452,6 +454,9 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState("admin@khoi5.edu.vn");
   const [loginCode, setLoginCode] = useState("ADMIN-2026");
   const [loginError, setLoginError] = useState("");
+  const [verifiedGoogleEmail, setVerifiedGoogleEmail] = useState("");
+  const [googleAuthMessage, setGoogleAuthMessage] = useState("");
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [pendingView, setPendingView] = useState<View | null>(null);
   const [query, setQuery] = useState("");
@@ -492,9 +497,21 @@ export default function App() {
 
   const login = (event: FormEvent) => {
     event.preventDefault();
+    const typedEmail = loginEmail.trim().toLowerCase();
+
+    if (isFirebaseAuthReady && !verifiedGoogleEmail) {
+      setLoginError("Vui lòng bấm Đăng nhập Google trước, sau đó nhập mã giáo viên.");
+      return;
+    }
+
+    if (verifiedGoogleEmail && typedEmail !== verifiedGoogleEmail.toLowerCase()) {
+      setLoginError("Email trong ô nhập chưa khớp với tài khoản Google vừa xác minh.");
+      return;
+    }
+
     const teacher = data.teachers.find(
       (item) =>
-        item.email.toLowerCase() === loginEmail.trim().toLowerCase() &&
+        item.email.toLowerCase() === typedEmail &&
         item.code === loginCode.trim() &&
         item.active,
     );
@@ -516,6 +533,8 @@ export default function App() {
     setUser(nextUser);
     localStorage.setItem(sessionKey, JSON.stringify(nextUser));
     setLoginError("");
+    setGoogleAuthMessage("");
+    setVerifiedGoogleEmail("");
     setShowAuthModal(false);
     if (pendingView) {
       setView(pendingView);
@@ -526,7 +545,36 @@ export default function App() {
   const logout = () => {
     setUser(null);
     localStorage.removeItem(sessionKey);
+    void signOutGoogle();
     setView("dashboard");
+  };
+
+  const loginWithGoogle = async () => {
+    setLoginError("");
+    setGoogleAuthMessage("");
+
+    if (!isFirebaseAuthReady) {
+      setLoginError("Chưa cấu hình Firebase Google Auth. Hiện có thể dùng email + mã demo để xem thử.");
+      return;
+    }
+
+    try {
+      setIsGoogleSigningIn(true);
+      const googleUser = await signInWithGoogle();
+
+      if (!googleUser.email) {
+        setLoginError("Tài khoản Google chưa trả về email. Vui lòng thử tài khoản khác.");
+        return;
+      }
+
+      setLoginEmail(googleUser.email);
+      setVerifiedGoogleEmail(googleUser.email);
+      setGoogleAuthMessage(`Đã xác minh Google: ${googleUser.email}`);
+    } catch {
+      setLoginError("Không đăng nhập Google được. Kiểm tra Firebase Auth và domain đã cấp quyền.");
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
   };
 
   const requireTeacherAccess = (nextView?: View) => {
@@ -738,7 +786,11 @@ export default function App() {
               <input
                 type="email"
                 value={loginEmail}
-                onChange={(event) => setLoginEmail(event.target.value)}
+                onChange={(event) => {
+                  setLoginEmail(event.target.value);
+                  setVerifiedGoogleEmail("");
+                  setGoogleAuthMessage("");
+                }}
                 placeholder="ten@truong.edu.vn"
                 required
               />
@@ -754,9 +806,19 @@ export default function App() {
               />
             </label>
             {loginError && <p className="form-error">{loginError}</p>}
+            <button
+              className="google-button"
+              type="button"
+              onClick={loginWithGoogle}
+              disabled={isGoogleSigningIn}
+            >
+              <Chrome size={18} />
+              {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
+            </button>
+            {googleAuthMessage && <p className="auth-note success">{googleAuthMessage}</p>}
             <button className="primary-button" type="submit">
               <Mail size={18} />
-              Vào thư viện
+              Xác thực mã
             </button>
           </form>
           <div className="demo-access">
@@ -829,8 +891,8 @@ export default function App() {
               <strong>Khách xem</strong>
               <span>Cần mã để tải/đóng góp</span>
             </div>
-            <button onClick={() => setShowAuthModal(true)} className="icon-button" title="Đăng nhập Gmail">
-              <Mail size={18} />
+            <button onClick={() => setShowAuthModal(true)} className="icon-button" title="Đăng nhập Google">
+              <Chrome size={18} />
             </button>
           </div>
         )}
@@ -857,8 +919,8 @@ export default function App() {
             </span>
             {!user && (
               <button className="primary-button small" onClick={() => setShowAuthModal(true)}>
-                <Mail size={17} />
-                Đăng nhập Gmail
+                <Chrome size={17} />
+                Đăng nhập Google
               </button>
             )}
           </div>
@@ -1488,25 +1550,40 @@ export default function App() {
         )}
       </section>
       {showAuthModal && (
-        <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label="Đăng nhập Gmail">
+        <div className="auth-modal-backdrop" role="dialog" aria-modal="true" aria-label="Đăng nhập Google">
           <section className="auth-modal">
             <div className="brand-row">
               <div className="brand-mark">
                 <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
               </div>
               <div>
-                <strong>Đăng nhập Gmail</strong>
-                <span>Nhập mã giáo viên do admin cấp để tải/đóng góp</span>
+                <strong>Đăng nhập Google</strong>
+                <span>Xác minh Gmail rồi nhập mã giáo viên do admin cấp</span>
               </div>
             </div>
+            <button
+              className="google-button"
+              type="button"
+              onClick={loginWithGoogle}
+              disabled={isGoogleSigningIn}
+            >
+              <Chrome size={18} />
+              {isGoogleSigningIn ? "Đang mở Google..." : "Đăng nhập bằng Google"}
+            </button>
+            {googleAuthMessage && <p className="auth-note success">{googleAuthMessage}</p>}
             <form onSubmit={login} className="login-form">
               <label>
                 Email Gmail
                 <input
                   type="email"
                   value={loginEmail}
-                  onChange={(event) => setLoginEmail(event.target.value)}
+                  onChange={(event) => {
+                    setLoginEmail(event.target.value);
+                    setVerifiedGoogleEmail("");
+                    setGoogleAuthMessage("");
+                  }}
                   placeholder="ten@truong.edu.vn"
+                  readOnly={Boolean(verifiedGoogleEmail)}
                   required
                 />
               </label>
@@ -1524,7 +1601,7 @@ export default function App() {
               <div className="auth-actions">
                 <button className="primary-button" type="submit">
                   <Mail size={18} />
-                  Xác thực
+                  Xác thực mã
                 </button>
                 <button
                   className="text-button"
