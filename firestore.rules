@@ -39,7 +39,9 @@ service cloud.firestore {
 
     match /news/{id} {
       allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() ||
+                    (isStaff() && request.resource.data.visible == false);
+      allow update, delete: if isAdmin();
     }
 
     match /guides/{id} {

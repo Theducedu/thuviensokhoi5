@@ -958,10 +958,10 @@ export default function App() {
 
     updateAndSaveData((current) => ({
       ...current,
-      resources: mergeRemoteWithDefaults("resources", seedData.resources, remoteResources, deletedKeys, current.resources),
-      news: mergeRemoteWithDefaults("news", seedData.news, remoteNews, deletedKeys, current.news),
-      guides: mergeRemoteWithDefaults("guides", seedData.guides, remoteGuides, deletedKeys, current.guides),
-      digitalApps: mergeRemoteWithDefaults("digitalApps", seedData.digitalApps, remoteDigitalApps, deletedKeys, current.digitalApps),
+      resources: mergeRemoteWithDefaults("resources", seedData.resources, remoteResources, deletedKeys),
+      news: mergeRemoteWithDefaults("news", seedData.news, remoteNews, deletedKeys),
+      guides: mergeRemoteWithDefaults("guides", seedData.guides, remoteGuides, deletedKeys),
+      digitalApps: mergeRemoteWithDefaults("digitalApps", seedData.digitalApps, remoteDigitalApps, deletedKeys),
     }));
   };
 
@@ -1243,8 +1243,7 @@ export default function App() {
     } catch (error) {
       console.error(`Không xóa được ${label}:`, error);
       if (defaultContentIds[kind].has(id)) {
-        setAndSaveData(nextData);
-        window.alert(`${label} đã được ẩn trên máy này, nhưng chưa đồng bộ được lên Firestore. Vui lòng kiểm tra Firestore Rules đã publish chưa.`);
+        window.alert(`Chưa xóa được ${label} khỏi hệ thống chung nên chưa ẩn ở máy này. Vui lòng kiểm tra Firestore Rules đã Publish và đăng nhập đúng tài khoản admin.`);
         return;
       }
       window.alert(`Chưa xóa được ${label}. Vui lòng kiểm tra Firestore Rules hoặc đăng nhập đúng tài khoản admin.`);
@@ -1482,6 +1481,55 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     } catch (error) {
       console.error("Không lưu được ảnh hoạt động lên Firestore:", error);
       window.alert("Ảnh chưa đồng bộ được lên hệ thống chung. Vui lòng kiểm tra Rules, tài khoản admin, hoặc dùng ảnh nhỏ hơn/link ảnh online.");
+    }
+  };
+
+  const addNewsContribution = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!requireStaffAccess("news")) return;
+    if (!user) return;
+    if (!db) {
+      window.alert("Chưa kết nối được Firestore nên ảnh không thể gửi cho admin duyệt. Vui lòng thử lại sau.");
+      return;
+    }
+
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const imageFile = form.get("imageFile");
+    let imageUrl = "";
+
+    try {
+      imageUrl = imageFile instanceof File && imageFile.size > 0
+        ? await imageFileToCompressedDataUrl(imageFile)
+        : String(form.get("imageUrl") || "").trim();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Không xử lý được ảnh. Vui lòng thử ảnh khác.");
+      return;
+    }
+
+    if (!imageUrl) {
+      window.alert("Vui lòng chọn ảnh hoặc dán link ảnh.");
+      return;
+    }
+
+    const next: News = {
+      id: createId("n"),
+      title: String(form.get("title") || "Ảnh hoạt động Khối 5"),
+      summary: "",
+      imageUrl,
+      author: user.name,
+      visible: user.role === "admin",
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await persistContentItem("news", next);
+      setAndSaveData({ ...data, news: [next, ...data.news] });
+      formElement.reset();
+      window.alert(user.role === "admin" ? "Đã thêm ảnh vào album." : "Ảnh đã gửi lên, đang chờ admin duyệt.");
+    } catch (error) {
+      console.error("Không gửi được ảnh hoạt động:", error);
+      window.alert("Chưa gửi được ảnh. Vui lòng kiểm tra Firestore Rules đã cho giáo viên tạo ảnh chờ duyệt, hoặc dùng ảnh nhỏ hơn/link ảnh online.");
     }
   };
 
@@ -2018,6 +2066,23 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
               </div>
               <span className="pill">{visibleNews.length} ảnh đang hiển thị</span>
             </section>
+            {hasStaffAccess && (
+              <form className="editor-form compact" onSubmit={addNewsContribution}>
+                <div className="section-heading">
+                  <h3>{user?.role === "admin" ? "Thêm ảnh hoạt động" : "Gửi ảnh hoạt động"}</h3>
+                  <span className="pill">{user?.role === "admin" ? "Hiển thị ngay" : "Chờ admin duyệt"}</span>
+                </div>
+                <input name="title" placeholder="Chú thích ảnh, ví dụ: Ngày hội đọc sách" />
+                <div className="form-grid">
+                  <input name="imageFile" type="file" accept="image/*" />
+                  <input name="imageUrl" type="url" placeholder="Hoặc dán link ảnh" />
+                </div>
+                <button className="primary-button" type="submit">
+                  <ImagePlus size={18} />
+                  {user?.role === "admin" ? "Thêm ảnh" : "Gửi ảnh chờ duyệt"}
+                </button>
+              </form>
+            )}
             <section className="news-grid">
               {visibleNews.map((item) => (
                 <article className="news-card" key={item.id}>
