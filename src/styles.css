@@ -212,6 +212,8 @@ button {
   display: grid;
   gap: 4px;
   color: #17211f;
+  font-family: "Arial Black", "Segoe UI Black", "Arial", sans-serif;
+  font-synthesis: weight;
   font-weight: 950;
   line-height: 1;
 }
@@ -234,7 +236,7 @@ button {
   display: block;
   width: fit-content;
   color: #08735f;
-  font-size: 1.58rem;
+  font-size: 1.62rem;
   font-weight: 950;
   line-height: 0.96;
   text-shadow: none;
@@ -249,7 +251,9 @@ button {
 
 .sidebar-brand .brand-subtitle {
   color: #3e4f4b;
-  font-weight: 850;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-synthesis: weight;
+  font-weight: 900;
   line-height: 1.15;
 }
 
