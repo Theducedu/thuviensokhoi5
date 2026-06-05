@@ -1703,6 +1703,11 @@ td span {
   color: #22312d;
 }
 
+.subject-schedule {
+  --subject-main: #0d9488;
+  --subject-soft: #eefcf8;
+}
+
 .subject-math {
   --subject-main: #2563eb;
   --subject-soft: #eef5ff;

@@ -142,8 +142,11 @@ type CurrentUser = {
   subject: string;
 };
 
+const scheduleSubjectLabel = "Lịch báo giảng";
+const allSubjectsLabel = "Tất cả các môn";
 const subjects = [
-  "Tất cả các môn",
+  scheduleSubjectLabel,
+  allSubjectsLabel,
   "Toán",
   "Tiếng Việt",
   "Khoa học",
@@ -406,7 +409,7 @@ const seedData: AppData = {
       id: "d-3",
       title: "Kho hình học 3D",
       category: "Hình học 3D",
-      subject: "Tất cả các môn",
+      subject: allSubjectsLabel,
       description: "Kho mô hình hình học 3D trực quan, hỗ trợ học sinh quan sát và tương tác với các khối hình.",
       appUrl: "/hinh-hoc-3d/index.html",
       thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg",
@@ -428,7 +431,7 @@ const seedData: AppData = {
       id: "d-5",
       title: "Vòng xoay ngôi sao",
       category: "Game học tập",
-      subject: "Tất cả các môn",
+      subject: allSubjectsLabel,
       description: "Công cụ chọn học sinh ngẫu nhiên bằng vòng xoay ngôi sao, tạo không khí hào hứng khi gọi tên hoặc chia lượt tham gia.",
       appUrl: "/Vong-xoay-ngoi-sao/ngoisao.html",
       thumbnailUrl: "/banner-dashboard.jpg",
@@ -439,7 +442,7 @@ const seedData: AppData = {
       id: "d-6",
       title: "Nhận xét Thông tư 27",
       category: "AI hỗ trợ",
-      subject: "Tất cả các môn",
+      subject: allSubjectsLabel,
       description: "Công cụ hỗ trợ tạo và quản lý nhận xét học sinh theo Thông tư 27, có kho câu nhận xét và chế độ AI.",
       appUrl: "/nhan-xet-tt27/index.html",
       thumbnailUrl: "/banner-dashboard.jpg",
@@ -638,6 +641,7 @@ function toIsoDate(value: unknown) {
 }
 
 function subjectClass(subject: string) {
+  if (subject.includes(scheduleSubjectLabel)) return "subject-schedule";
   if (subject.includes("Sách điện tử")) return "subject-ebook";
   if (subject.includes("Toán")) return "subject-math";
   if (subject.includes("Tiếng Việt")) return "subject-vietnamese";
@@ -994,7 +998,7 @@ export default function App() {
         return {
           id: String(item.id || snapshot.id),
           title: String(item.title || ""),
-          subject: String(item.subject || subjects[0]),
+          subject: String(item.subject || allSubjectsLabel),
           type: normalizeResourceType(item.type),
           category: String(item.category || "Tài liệu"),
           week: String(item.week || ""),
@@ -1047,7 +1051,7 @@ export default function App() {
           id: String(item.id || snapshot.id),
           title: String(item.title || ""),
           category: String(item.category || "Hình học 3D") as DigitalApp["category"],
-          subject: String(item.subject || "Tất cả các môn"),
+          subject: String(item.subject || allSubjectsLabel),
           description: String(item.description || ""),
           appUrl: String(item.appUrl || ""),
           thumbnailUrl: String(item.thumbnailUrl || ""),
@@ -1146,7 +1150,7 @@ export default function App() {
       .toLowerCase()
       .includes(query.toLowerCase());
     const matchesSubject =
-      subjectFilter === "Tất cả" || subjectFilter === "Tất cả các môn" || item.subject === subjectFilter;
+      subjectFilter === "Tất cả" || subjectFilter === allSubjectsLabel || item.subject === subjectFilter;
     const matchesType = typeFilter === "all" || item.type === typeFilter;
     return matchesQuery && matchesSubject && matchesType;
   });
@@ -1417,7 +1421,7 @@ export default function App() {
     const form = new FormData(event.currentTarget);
     updateResource(id, {
       title: String(form.get("title") || ""),
-      subject: String(form.get("subject") || subjects[0]),
+      subject: String(form.get("subject") || allSubjectsLabel),
       type: normalizeResourceType(form.get("type")),
       category: String(form.get("category") || "Tài liệu"),
       week: String(form.get("week") || ""),
@@ -1447,7 +1451,7 @@ export default function App() {
     const next: Resource = {
       id: createId("r"),
       title: String(form.get("title") || ""),
-      subject: String(form.get("subject") || subjects[0]),
+      subject: String(form.get("subject") || allSubjectsLabel),
       type: normalizeResourceType(form.get("type")),
       category: String(form.get("category") || "Tài liệu"),
       week: String(form.get("week") || ""),
@@ -1481,7 +1485,7 @@ export default function App() {
     const next: Resource = {
       id: createId("r"),
       title: String(form.get("title") || "Tài liệu mới"),
-      subject: String(form.get("subject") || subjects[0]),
+      subject: String(form.get("subject") || allSubjectsLabel),
       type: normalizeResourceType(form.get("type")),
       category: String(form.get("category") || "Tài liệu"),
       week: String(form.get("week") || ""),
@@ -1524,7 +1528,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
       id: existingTeacher?.id ?? createId("t"),
       name: String(form.get("name") || ""),
       email,
-      subject: String(form.get("subject") || subjects[0]),
+      subject: String(form.get("subject") || allSubjectsLabel),
       code: "",
       role,
       active: true,
@@ -1859,7 +1863,7 @@ Chi tiết: ${errorMessage(error)}`);
       id: createId("d"),
       title: String(form.get("title") || ""),
       category: form.get("category") as DigitalApp["category"],
-      subject: String(form.get("subject") || subjects[0]),
+      subject: String(form.get("subject") || allSubjectsLabel),
       description: String(form.get("description") || ""),
       appUrl: String(form.get("appUrl") || ""),
       thumbnailUrl: String(form.get("thumbnailUrl") || ""),
@@ -1894,7 +1898,7 @@ Chi tiết: ${errorMessage(error)}`);
       ...existingApp,
       title: String(form.get("title") || ""),
       category: form.get("category") as DigitalApp["category"],
-      subject: String(form.get("subject") || subjects[0]),
+      subject: String(form.get("subject") || allSubjectsLabel),
       description: String(form.get("description") || ""),
       appUrl: String(form.get("appUrl") || ""),
       thumbnailUrl: String(form.get("thumbnailUrl") || ""),
@@ -2081,7 +2085,7 @@ Chi tiết: ${errorMessage(error)}`);
               <div className="subject-strip featured-subjects">
                 {dashboardSubjectCards.map((subject) => {
                   const count =
-                    subject === "Tất cả các môn"
+                    subject === allSubjectsLabel
                       ? approvedResources.length
                       : subject === ebookSubjectLabel
                         ? ebookResources.length
@@ -2098,7 +2102,7 @@ Chi tiết: ${errorMessage(error)}`);
                           setQuery("sách điện tử");
                         } else {
                           setQuery("");
-                          setSubjectFilter(subject === "Tất cả các môn" ? "Tất cả" : subject);
+                          setSubjectFilter(subject === allSubjectsLabel ? "Tất cả" : subject);
                         }
                         setView("resources");
                       }}
@@ -2303,7 +2307,7 @@ Chi tiết: ${errorMessage(error)}`);
               <div className="form-grid">
                 <label>
                   Môn
-                  <select name="subject" defaultValue={!user || user.subject === "Quản trị" ? subjects[0] : user.subject}>
+                  <select name="subject" defaultValue={!user || user.subject === "Quản trị" ? allSubjectsLabel : user.subject}>
                     {subjects.map((subject) => (
                       <option key={subject}>{subject}</option>
                     ))}
@@ -2567,7 +2571,7 @@ Chi tiết: ${errorMessage(error)}`);
                   </label>
                   <label>
                     Môn
-                    <select name="subject" defaultValue={subjects[0]}>
+                    <select name="subject" defaultValue={allSubjectsLabel}>
                       {subjects.map((subject) => (
                         <option key={subject}>{subject}</option>
                       ))}
@@ -2786,7 +2790,7 @@ Chi tiết: ${errorMessage(error)}`);
                 <form className="editor-form compact" onSubmit={addAdminResource}>
                   <input name="title" required placeholder="Tên tài liệu" />
                   <div className="form-grid">
-                    <select name="subject" defaultValue={subjects[0]}>
+                    <select name="subject" defaultValue={allSubjectsLabel}>
                       {subjects.map((subject) => (
                         <option key={subject}>{subject}</option>
                       ))}
@@ -2818,7 +2822,7 @@ Chi tiết: ${errorMessage(error)}`);
                   <input name="name" required placeholder="Họ tên" />
                   <input name="email" required type="email" placeholder="Email Gmail" />
                   <div className="form-grid">
-                    <select name="subject" defaultValue={subjects[0]}>
+                    <select name="subject" defaultValue={allSubjectsLabel}>
                       {subjects.map((subject) => (
                         <option key={subject}>{subject}</option>
                       ))}
