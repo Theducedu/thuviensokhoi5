@@ -224,9 +224,9 @@ button {
 }
 
 .brand-title-main {
-  color: #3e514d;
+  color: #21312e;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 950;
   text-transform: uppercase;
 }
 
@@ -237,10 +237,7 @@ button {
   font-size: 1.58rem;
   font-weight: 950;
   line-height: 0.96;
-  text-shadow:
-    0 1px 0 #d8f1e8,
-    0 2px 0 #a7d7ca,
-    0 5px 12px rgba(6, 92, 76, 0.18);
+  text-shadow: none;
 }
 
 .brand-row span,
@@ -251,8 +248,8 @@ button {
 }
 
 .sidebar-brand .brand-subtitle {
-  color: #5b6a66;
-  font-weight: 700;
+  color: #3e4f4b;
+  font-weight: 850;
   line-height: 1.15;
 }
 
