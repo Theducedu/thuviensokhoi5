@@ -864,6 +864,8 @@ input[type="range"]::-moz-range-thumb {
 .canvas-container {
     flex: 1;
     position: relative;
+    isolation: isolate;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -884,6 +886,8 @@ input[type="range"]::-moz-range-thumb {
     width: 100%;
     height: 100%;
     border: none;
+    z-index: 10;
+    background: var(--bg-primary);
 }
 
 .hinhtru3d-iframe.hidden {
