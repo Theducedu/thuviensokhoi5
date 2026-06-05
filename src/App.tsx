@@ -1283,7 +1283,8 @@ export default function App() {
     if (!requireStaffAccess("contribute")) return;
     if (!user) return;
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const next: Resource = {
       id: createId("r"),
       title: String(form.get("title") || ""),
@@ -1302,7 +1303,7 @@ export default function App() {
 
     setAndSaveData({ ...data, resources: [next, ...data.resources] });
     void persistContentItem("resources", next);
-    event.currentTarget.reset();
+    formElement.reset();
     setView(user.role === "admin" ? "admin" : "resources");
   };
 
@@ -1316,7 +1317,8 @@ export default function App() {
       return;
     }
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const next: Resource = {
       id: createId("r"),
       title: String(form.get("title") || "Tài liệu mới"),
@@ -1336,7 +1338,7 @@ export default function App() {
     try {
       await persistContentItem("resources", next);
       setAndSaveData({ ...data, resources: [next, ...data.resources] });
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       console.error("Không thêm được tài liệu thư viện:", error);
       const code = errorCode(error);
@@ -1354,7 +1356,8 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
 
   const addTeacher = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const role = form.get("role") as Role;
     const email = String(form.get("email") || "").trim().toLowerCase();
     const existingTeacher = data.teachers.find((teacher) => teacher.email.toLowerCase() === email);
@@ -1386,7 +1389,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
       );
     }
 
-    event.currentTarget.reset();
+    formElement.reset();
   };
 
   const updateTeacherAccess = async (teacher: Teacher, active: boolean) => {
@@ -1424,7 +1427,8 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
       return;
     }
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const imageFile = form.get("imageFile");
     let imageUrl = "";
 
@@ -1452,7 +1456,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     try {
       await persistContentItem("news", next);
       setAndSaveData({ ...data, news: [next, ...data.news] });
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       console.error("Không lưu được ảnh hoạt động lên Firestore:", error);
       window.alert("Ảnh chưa đồng bộ được lên hệ thống chung. Vui lòng kiểm tra Rules, tài khoản admin, hoặc dùng ảnh nhỏ hơn/link ảnh online.");
@@ -1522,7 +1526,8 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     event.preventDefault();
     if (!user || user.role !== "admin") return;
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const imageFile = form.get("imageFile");
     let imageUrl = "";
 
@@ -1557,7 +1562,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     try {
       await persistContentItem("guides", next);
       setAndSaveData({ ...data, guides: [next, ...data.guides] });
-      event.currentTarget.reset();
+      formElement.reset();
     } catch {
       window.alert("Bài chưa đồng bộ được lên hệ thống chung. Vui lòng dùng ảnh nhỏ hơn hoặc dán link ảnh online.");
     }
@@ -1626,7 +1631,8 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     event.preventDefault();
     if (!user || user.role !== "admin") return;
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const next: DigitalApp = {
       id: createId("d"),
       title: String(form.get("title") || ""),
@@ -1641,7 +1647,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
 
     setAndSaveData({ ...data, digitalApps: [next, ...data.digitalApps] });
     await persistContentItem("digitalApps", next);
-    event.currentTarget.reset();
+    formElement.reset();
   };
 
   const deleteDigitalApp = async (id: string) => {
