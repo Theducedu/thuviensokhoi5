@@ -118,16 +118,22 @@ body {
     text-shadow: 0 0 20px rgba(77, 208, 225, 0.5);
 }
 
-.sidebar-header .settings-icon {
-    font-size: 1rem;
+.back-home-btn {
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-sm);
+    background: rgba(77, 208, 225, 0.1);
+    color: var(--text-primary);
     cursor: pointer;
-    opacity: 0.5;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.45rem 0.55rem;
     transition: var(--transition);
+    white-space: nowrap;
 }
 
-.sidebar-header .settings-icon:hover {
-    opacity: 1;
-    color: var(--accent-cyan);
+.back-home-btn:hover {
+    background: rgba(77, 208, 225, 0.2);
+    box-shadow: var(--shadow-glow);
 }
 
 /* ==========================================

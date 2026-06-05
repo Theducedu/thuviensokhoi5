@@ -2368,7 +2368,9 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
                                 {formatDate(app.createdAt)} · {app.author}
                               </span>
                               <div className="review-actions">
-                                <button className="primary-button small" onClick={() => window.open(app.appUrl, "_blank", "noopener,noreferrer")}>
+                                <button className="primary-button small" onClick={() => {
+                                  window.location.href = app.appUrl;
+                                }}>
                                   <ExternalLink size={17} />
                                   Mở
                                 </button>
