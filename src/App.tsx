@@ -237,6 +237,38 @@ function errorMessage(error: unknown) {
   return typeof error === "object" && error && "message" in error ? String((error as { message?: unknown }).message) : String(error);
 }
 
+function shouldRetryGoogleWithRedirect(error: unknown) {
+  const code = errorCode(error);
+  return code === "auth/popup-blocked" || code === "auth/web-storage-unsupported" || code === "auth/operation-not-supported-in-this-environment";
+}
+
+function googleLoginErrorMessage(error: unknown) {
+  const code = errorCode(error);
+  const currentDomain = typeof window === "undefined" ? "domain hiện tại" : window.location.hostname;
+
+  switch (code) {
+    case "auth/unauthorized-domain":
+      return `Firebase chưa cấp quyền cho domain ${currentDomain}. Vào Firebase Console > Authentication > Settings > Authorized domains, thêm ${currentDomain} rồi thử lại.`;
+    case "auth/operation-not-allowed":
+      return "Firebase Auth chưa bật nhà cung cấp Google. Vào Firebase Console > Authentication > Sign-in method và bật Google.";
+    case "auth/popup-blocked":
+      return "Trình duyệt đã chặn cửa sổ đăng nhập Google. App sẽ thử chuyển sang chế độ chuyển trang, hoặc bạn hãy cho phép popup rồi bấm lại.";
+    case "auth/popup-closed-by-user":
+    case "auth/cancelled-popup-request":
+      return "Cửa sổ đăng nhập Google đã bị đóng trước khi hoàn tất. Vui lòng bấm đăng nhập lại.";
+    case "auth/invalid-api-key":
+    case "auth/app-deleted":
+    case "auth/invalid-app-credential":
+      return "Cấu hình Firebase trên Vercel chưa đúng. Kiểm tra lại VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID và VITE_FIREBASE_APP_ID.";
+    case "auth/network-request-failed":
+      return "Không kết nối được tới Google/Firebase. Kiểm tra mạng rồi thử lại.";
+    default:
+      return code
+        ? `Không đăng nhập Google được. Mã lỗi Firebase: ${code}. ${errorMessage(error)}`
+        : "Không đăng nhập Google được. Kiểm tra Firebase Auth, domain đã cấp quyền, hoặc mở web bằng Safari/Chrome.";
+  }
+}
+
 const today = new Date().toISOString();
 
 const seedData: AppData = {
@@ -1187,6 +1219,17 @@ export default function App() {
     const storedPendingView = sessionStorage.getItem(googlePendingViewKey);
     const nextPendingView = pendingView ?? (isView(storedPendingView) ? storedPendingView : null);
 
+    if (authorizedUser) {
+      updateAndSaveData((current) => ({
+        ...current,
+        teachers: current.teachers.some((teacher) => teacher.email.toLowerCase() === googleEmail)
+          ? current.teachers.map((teacher) =>
+              teacher.email.toLowerCase() === googleEmail ? { ...authorizedUser, active: true } : teacher,
+            )
+          : [{ ...authorizedUser, active: true }, ...current.teachers],
+      }));
+    }
+
     updateLocalLoginStats(nextUser);
     void recordRemoteLogin(nextUser).then(() => {
       if (nextUser.role === "admin") void refreshRemoteAccessData();
@@ -1227,8 +1270,19 @@ export default function App() {
 
       const googleUser = await signInWithGoogle();
       await completeGoogleLogin(googleUser);
-    } catch {
-      setLoginError("Không đăng nhập Google được. Kiểm tra Firebase Auth, domain đã cấp quyền, hoặc mở web bằng Safari/Chrome.");
+    } catch (error) {
+      console.error("Google login failed:", error);
+      setLoginError(googleLoginErrorMessage(error));
+
+      if (shouldRetryGoogleWithRedirect(error)) {
+        try {
+          if (pendingView) sessionStorage.setItem(googlePendingViewKey, pendingView);
+          await signInWithGoogleRedirect();
+        } catch (redirectError) {
+          console.error("Google redirect login failed:", redirectError);
+          setLoginError(googleLoginErrorMessage(redirectError));
+        }
+      }
     } finally {
       setIsGoogleSigningIn(false);
     }
@@ -1244,9 +1298,10 @@ export default function App() {
         setIsGoogleSigningIn(true);
         await completeGoogleLogin(googleUser);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error("Google redirect result failed:", error);
         if (!cancelled) {
-          setLoginError("Không hoàn tất được đăng nhập Google. Vui lòng mở web bằng Safari/Chrome rồi thử lại.");
+          setLoginError(googleLoginErrorMessage(error));
         }
       })
       .finally(() => {
@@ -1494,16 +1549,30 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
   };
 
   const updateTeacherAccess = async (teacher: Teacher, active: boolean) => {
-    setAndSaveData({
-      ...data,
-      teachers: data.teachers.map((item) => (item.id === teacher.id ? { ...item, active } : item)),
-    });
+    const nextTeacher = { ...teacher, active };
 
-    if (db) {
-      await updateDoc(doc(db, "authorizedUsers", emailDocId(teacher.email)), {
-        active,
-        updatedAt: serverTimestamp(),
+    try {
+      if (db) {
+        await setDoc(
+          doc(db, "authorizedUsers", emailDocId(teacher.email)),
+          {
+            ...nextTeacher,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+
+      setAndSaveData({
+        ...data,
+        teachers: data.teachers.map((item) => (item.id === teacher.id ? nextTeacher : item)),
       });
+    } catch (error) {
+      console.error("Không cập nhật được quyền truy cập:", error);
+      window.alert(`Chưa cập nhật được quyền truy cập cho ${teacher.email}.
+
+Mã lỗi Firebase: ${errorCode(error) || "(không có)"}
+Chi tiết: ${errorMessage(error)}`);
     }
   };
 
