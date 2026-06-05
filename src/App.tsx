@@ -415,6 +415,7 @@ const titleUpdates: Record<string, string> = {
 };
 
 const removedDefaultDigitalAppIds = new Set(["d-1", "d-2"]);
+const removedDefaultGuideIds = new Set(["g-1"]);
 const contentCollections: Record<ContentKind, string> = {
   resources: "resources",
   news: "news",
@@ -512,15 +513,21 @@ function normalizeData(data: AppData): AppData {
     .filter((app) => !removedDefaultDigitalAppIds.has(app.id))
     .filter((app) => !localDeletedKeys.has(deletedDefaultKey("digitalApps", app.id)))
     .map((app) => (app.id === "d-3" ? { ...app, thumbnailUrl: "/hinh-hoc-3d/images/nenhinh3d.jpg" } : app));
-  const savedGuides = (data.guides ?? seedData.guides).map((guide) => ({
-    ...guide,
-    imageUrl: guide.imageUrl ?? "",
-    videoUrl: guide.videoUrl ?? "",
-    downloadUrl: guide.downloadUrl ?? "",
-    downloadLabel: guide.downloadLabel ?? "",
-  }));
+  const savedGuides = (data.guides ?? seedData.guides)
+    .filter((guide) => !removedDefaultGuideIds.has(guide.id))
+    .map((guide) => ({
+      ...guide,
+      imageUrl: guide.imageUrl ?? "",
+      videoUrl: guide.videoUrl ?? "",
+      downloadUrl: guide.downloadUrl ?? "",
+      downloadLabel: guide.downloadLabel ?? "",
+    }));
   const savedGuideIds = new Set(savedGuides.map((guide) => guide.id));
-  const guides = filterDeletedDefaults("guides", [...savedGuides, ...seedData.guides.filter((guide) => !savedGuideIds.has(guide.id))], localDeletedKeys);
+  const guides = filterDeletedDefaults(
+    "guides",
+    [...savedGuides, ...seedData.guides.filter((guide) => !savedGuideIds.has(guide.id) && !removedDefaultGuideIds.has(guide.id))],
+    localDeletedKeys,
+  );
 
   return {
     ...data,
@@ -938,7 +945,7 @@ export default function App() {
           createdAt: toIsoDate(item.createdAt),
         } satisfies Guide;
       })
-      .filter((item) => item.title && item.content);
+      .filter((item) => item.title && item.content && !removedDefaultGuideIds.has(item.id));
     const remoteDigitalApps = digitalDocs.docs
       .map((snapshot) => {
         const item = snapshot.data();
@@ -960,7 +967,12 @@ export default function App() {
       ...current,
       resources: mergeRemoteWithDefaults("resources", seedData.resources, remoteResources, deletedKeys),
       news: mergeRemoteWithDefaults("news", seedData.news, remoteNews, deletedKeys),
-      guides: mergeRemoteWithDefaults("guides", seedData.guides, remoteGuides, deletedKeys),
+      guides: mergeRemoteWithDefaults(
+        "guides",
+        seedData.guides.filter((guide) => !removedDefaultGuideIds.has(guide.id)),
+        remoteGuides,
+        deletedKeys,
+      ),
       digitalApps: mergeRemoteWithDefaults("digitalApps", seedData.digitalApps, remoteDigitalApps, deletedKeys),
     }));
   };
