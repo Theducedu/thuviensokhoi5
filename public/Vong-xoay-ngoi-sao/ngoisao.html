@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ngôi Sao May Mắn - Chọn Học Sinh Ngẫu Nhiên</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        .library-back-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 9999;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.78);
+            color: #fff;
+            cursor: pointer;
+            font-weight: 800;
+            padding: 10px 14px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+            backdrop-filter: blur(10px);
+        }
+
+        .library-back-btn:hover {
+            background: rgba(30, 41, 59, 0.92);
+        }
+
+        /* --- Cấu hình chung --- */
+        body {
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            background: black;
+            color: white;
+            user-select: none;
+            /* Ngăn bôi đen text khi click nhiều */
+        }
+
+        h1,
+        h2,
+        .sci-fi-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* --- Nền Vũ Trụ --- */
+        .space-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #050505 0%, #1a0b2e 40%, #0f172a 70%, #2d0a31 100%);
+            background-size: 200% 200%;
+            animation: gradientMove 15s ease infinite;
+        }
+
+        @keyframes gradientMove {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* --- Sao nền nhấp nháy --- */
+        .bg-star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: twinkle var(--duration) infinite ease-in-out;
+            box-shadow: 0 0 5px white;
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+                box-shadow: 0 0 10px white;
+            }
+        }
+
+        /* --- Tinh vân (Nebula) --- */
+        .nebula {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out alternate;
+        }
+
+        .nebula-1 {
+            background: #7c3aed;
+            top: -10%;
+            left: -10%;
+            animation-delay: 0s;
+        }
+
+        .nebula-2 {
+            background: #2563eb;
+            bottom: -10%;
+            right: -10%;
+            animation-delay: -5s;
+        }
+
+        .nebula-3 {
+            background: #db2777;
+            top: 40%;
+            left: 40%;
+            width: 300px;
+            height: 300px;
+            opacity: 0.3;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(30px, 50px) scale(1.1);
+            }
+        }
+
+        /* --- Sao băng --- */
+        .shooting-star {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(-45deg, #5f91ff, rgba(0, 0, 255, 0));
+            filter: drop-shadow(0 0 6px #699bff);
+            opacity: 0;
+            z-index: 0;
+        }
+
+        @keyframes shoot {
+            0% {
+                transform: translateX(0) translateY(0) rotate(-45deg);
+                opacity: 1;
+            }
+
+            70% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(-500px) translateY(500px) rotate(-45deg);
+                opacity: 0;
+            }
+        }
+
+        /* --- UI Elements --- */
+        .glass-panel {
+            background: rgba(20, 20, 30, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* --- Vòng quay / HUD --- */
+        .wheel-container {
+            position: relative;
+            width: 550px;
+            /* Tăng kích thước */
+            height: 550px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .orbit-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            animation: rotateRight 20s linear infinite;
+        }
+
+        .orbit-star {
+            position: absolute;
+            color: #fbbf24;
+            font-size: 1.5rem;
+            filter: drop-shadow(0 0 8px #f59e0b);
+        }
+
+        .center-display {
+            width: 450px;
+            /* Tăng kích thước */
+            height: 450px;
+            background: radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 1) 100%);
+            border-radius: 50%;
+            border: 3px solid rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 50px rgba(99, 102, 241, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Hiệu ứng quét radar */
+        .center-display::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 50%;
+            /* Nửa vòng tròn */
+            top: 0;
+            left: 0;
+            background: linear-gradient(to right, transparent 50%, rgba(99, 102, 241, 0.1) 100%);
+            transform-origin: bottom center;
+            animation: radarScan 4s linear infinite;
+            border-radius: 1000px 1000px 0 0;
+            z-index: 0;
+        }
+
+        .center-display::after {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: #ec4899;
+            border-bottom-color: #06b6d4;
+            animation: rotateLeft 4s linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes radarScan {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .result-text {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            word-wrap: break-word;
+            line-height: 1.2;
+            z-index: 2;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @keyframes rotateRight {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes rotateLeft {
+            from {
+                transform: rotate(360deg);
+            }
+
+            to {
+                transform: rotate(0deg);
+            }
+        }
+
+        /* --- Popup Chiến Thắng --- */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.9);
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .winner-card {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+            border: 2px solid rgba(251, 191, 36, 0.5);
+            box-shadow: 0 0 80px rgba(251, 191, 36, 0.4);
+            transform: scale(0.5);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(20px);
+        }
+
+        .winner-card.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(251, 191, 36, 0.6);
+        }
+
+        .winner-name-container {
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+        }
+
+        /* Scrollbar tùy chỉnh */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .wheel-container {
+                width: 380px;
+                height: 380px;
+            }
+
+            .center-display {
+                width: 300px;
+                height: 300px;
+            }
+
+            .result-text {
+                font-size: 2rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .wheel-container {
+                width: 300px;
+                height: 300px;
+            }
+
+            .center-display {
+                width: 240px;
+                height: 240px;
+            }
+
+            .result-text {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col">
+    <button class="library-back-btn" id="library-back-btn" type="button">← Quay lại</button>
+
+    <!-- Audio Toggle Button (Fixed Top Right) -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="soundToggle" onclick="toggleSound()"
+            class="bg-white/10 hover:bg-white/20 text-cyan-300 border border-cyan-500/30 rounded-full w-12 h-12 flex items-center justify-center transition backdrop-blur-md shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+            <i id="soundIcon" class="fas fa-volume-up text-lg"></i>
+        </button>
+    </div>
+
+    <!-- Background Layers -->
+    <div class="space-background"></div>
+    <div class="nebula nebula-1"></div>
+    <div class="nebula nebula-2"></div>
+    <div class="nebula nebula-3"></div>
+    <div id="star-container"></div>
+    <div id="meteor-container"></div>
+
+    <!-- Header -->
+    <header class="p-4 text-center z-10 pt-6">
+        <h1
+            class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)] uppercase tracking-widest">
+            <i class="fas fa-star text-yellow-400 mr-3 animate-[spin_10s_linear_infinite]"></i>Ngôi Sao May Mắn
+        </h1>
+        <p class="text-cyan-200/80 mt-3 font-orbitron text-sm md:text-lg tracking-[0.2em] uppercase drop-shadow-lg">
+            <i class="fas fa-heart text-pink-500 animate-pulse mr-2"></i>Giáo viên yêu CN - NTĐ
+        </p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 z-10 flex items-center justify-center">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full max-w-7xl h-full items-center">
+
+            <!-- Left Column: Controls -->
+            <div
+                class="lg:col-span-4 glass-panel rounded-3xl p-6 flex flex-col h-auto max-h-[80vh] border-t border-white/20">
+                <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+                    <h2 class="text-xl font-bold text-cyan-300 tracking-wide">
+                        <i class="fas fa-users-cog mr-2"></i>Thiết Lập
+                    </h2>
+                    <span id="studentCount"
+                        class="text-xs font-mono text-purple-300 bg-purple-900/50 px-2 py-1 rounded">0 học sinh</span>
+                </div>
+
+                <div class="flex gap-3 mb-4">
+                    <button onclick="useSampleData()"
+                        class="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-500/30 transition transform hover:-translate-y-0.5">
+                        <i class="fas fa-magic mr-1"></i> Mẫu
+                    </button>
+                    <label for="fileUpload"
+                        class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/30 transition transform hover:-translate-y-0.5 cursor-pointer text-center flex items-center justify-center">
+                        <i class="fas fa-cloud-upload-alt mr-1"></i> Tải File
+                    </label>
+                    <input type="file" id="fileUpload" accept=".txt" class="hidden" onchange="handleFileUpload(this)">
+                </div>
+
+                <textarea id="studentList"
+                    class="flex-grow w-full bg-black/40 text-cyan-50 p-4 rounded-xl border border-white/10 focus:border-cyan-400/50 focus:bg-black/60 focus:outline-none resize-none mb-4 font-mono text-sm leading-relaxed transition shadow-inner"
+                    placeholder="Nhập tên học sinh (Enter xuống dòng)..."></textarea>
+
+                <div class="flex justify-end mb-4">
+                    <button onclick="clearList()"
+                        class="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition opacity-70 hover:opacity-100">
+                        <i class="fas fa-trash-alt"></i> Xóa danh sách
+                    </button>
+                </div>
+
+                <!-- Spin Button -->
+                <div class="relative group mt-auto">
+                    <div
+                        class="absolute -inset-1 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-500 group-hover:duration-200">
+                    </div>
+                    <button id="spinBtn" onclick="toggleSpin()"
+                        class="relative w-full bg-gray-900 text-white font-black py-5 rounded-xl text-2xl uppercase tracking-[0.2em] shadow-2xl overflow-hidden group-active:scale-[0.98] transition">
+                        <div
+                            class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out">
+                        </div>
+                        <span id="btnText"
+                            class="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-pink-200 to-cyan-200">QUAY
+                            NGAY</span>
+                        <i id="btnIcon" class="fas fa-rocket ml-2 text-cyan-300 relative z-10"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Wheel Visualization -->
+            <div class="lg:col-span-8 flex flex-col items-center justify-center relative min-h-[400px]">
+
+                <div class="wheel-container">
+                    <div id="orbitRing" class="orbit-ring">
+                        <!-- Stars generated by JS -->
+                    </div>
+
+                    <div class="center-display">
+                        <div id="displayArea" class="result-text text-cyan-100">
+                            SẴN SÀNG
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-10 text-center space-y-2">
+                    <div
+                        class="h-1 w-32 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50">
+                    </div>
+                    <p class="text-cyan-400/60 text-xs font-mono tracking-widest uppercase">System Ready // Waiting for
+                        input</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Popup Kết Quả -->
+    <div id="winnerModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay">
+        <div id="confetti" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+        <div id="winnerCard" class="winner-card relative w-11/12 max-w-2xl rounded-[2rem] p-1 text-center">
+            <!-- Inner Glow Container -->
+            <div class="bg-black/80 rounded-[1.9rem] p-8 md:p-12 relative overflow-hidden">
+
+                <!-- Ray effects background -->
+                <div
+                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] h-[200%] bg-[conic-gradient(from_0deg,transparent_0deg,rgba(251,191,36,0.1)_20deg,transparent_40deg,rgba(249,115,22,0.1)_60deg,transparent_80deg)] animate-[spin_20s_linear_infinite] z-0 pointer-events-none">
+                </div>
+
+                <!-- Close Button -->
+                <button onclick="closeModal()"
+                    class="absolute top-6 right-6 text-white/50 hover:text-white text-2xl transition z-20">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <div class="relative z-10">
+                    <div class="mb-8 inline-block relative">
+                        <div class="absolute inset-0 bg-yellow-500 blur-2xl opacity-40"></div>
+                        <i
+                            class="fas fa-trophy text-7xl md:text-8xl text-yellow-300 drop-shadow-[0_0_15px_rgba(253,224,71,0.8)] animate-bounce"></i>
+                    </div>
+
+                    <h3
+                        class="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-orange-200 mb-2 uppercase font-orbitron tracking-widest">
+                        Chúc Mừng Chiến Thắng!
+                    </h3>
+                    <p class="text-blue-200/80 text-sm mb-8 font-mono">Ngôi sao sáng nhất hôm nay là</p>
+
+                    <div
+                        class="winner-name-container py-8 px-4 rounded-xl border-y border-white/10 mb-8 transform transition hover:scale-105 duration-300">
+                        <h2 id="winnerName"
+                            class="text-4xl md:text-6xl font-black text-white glow-text break-words leading-tight font-orbitron">
+                            NGUYỄN VĂN A
+                        </h2>
+                    </div>
+
+                    <button onclick="closeModal()"
+                        class="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-400 hover:to-orange-500 text-black font-bold py-3 px-10 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.4)] transition transform hover:-translate-y-1 active:scale-95 text-lg">
+                        <i class="fas fa-check mr-2"></i> Xác Nhận
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript logic -->
+    <script>
+        document.getElementById('library-back-btn')?.addEventListener('click', function () {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/';
+            }
+        });
+
+        // --- 1. AUDIO SYSTEM (Web Audio API) ---
+        // Không dùng file ngoài để đảm bảo độ ổn định cao nhất
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isMuted = false;
+
+        function toggleSound() {
+            isMuted = !isMuted;
+            const btn = document.getElementById('soundToggle');
+            const icon = document.getElementById('soundIcon');
+
+            if (isMuted) {
+                btn.classList.add('bg-red-500/20', 'border-red-500/50', 'text-red-400');
+                btn.classList.remove('bg-white/10', 'text-cyan-300', 'border-cyan-500/30');
+                icon.className = 'fas fa-volume-mute';
+            } else {
+                btn.classList.remove('bg-red-500/20', 'border-red-500/50', 'text-red-400');
+                btn.classList.add('bg-white/10', 'text-cyan-300', 'border-cyan-500/30');
+                icon.className = 'fas fa-volume-up';
+            }
+
+            // Resume context if suspended (browser policy)
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Tạo âm thanh "Tick" (khi quay)
+        function playTickSound() {
+            if (isMuted) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.type = 'sine';
+            // Tần số ngẫu nhiên nhẹ để bớt nhàm chán
+            osc.frequency.setValueAtTime(800 + Math.random() * 200, audioCtx.currentTime);
+
+            gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // Âm thanh chiến thắng - Sử dụng file MP3
+        const winAudio = new Audio('../public/sounds/Am_thanh_chuc_mung_chien_thang-www_tiengdong_com.mp3');
+        winAudio.preload = 'auto';
+
+        // Âm thanh quay vòng - Sử dụng file MP3
+        const spinAudio = new Audio('../public/sounds/am-thanh-vong-xoay.mp3');
+        spinAudio.preload = 'auto';
+        spinAudio.loop = true;
+        spinAudio.volume = 0.6;
+
+        function playWinSound() {
+            if (isMuted) return;
+
+            // Reset và phát âm thanh
+            winAudio.currentTime = 0;
+            winAudio.volume = 0.7;
+            winAudio.play().catch(err => {
+                console.log('Audio play failed:', err);
+                // Fallback: sử dụng Web Audio API nếu không phát được file
+                playWinSoundFallback();
+            });
+        }
+
+        // Fallback nếu file không load được
+        function playWinSoundFallback() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const now = audioCtx.currentTime;
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C4, E4, G4, C5 (C Major)
+
+            notes.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + index * 0.1);
+
+                gainNode.gain.setValueAtTime(0, now + index * 0.1);
+                gainNode.gain.linearRampToValueAtTime(0.15, now + index * 0.1 + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + index * 0.1 + 1.5);
+
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc.start(now + index * 0.1);
+                osc.stop(now + index * 0.1 + 1.5);
+            });
+        }
+
+        // --- 2. VISUAL EFFECTS ---
+        const starContainer = document.getElementById('star-container');
+        const meteorContainer = document.getElementById('meteor-container');
+        const orbitRing = document.getElementById('orbitRing');
+
+        function createStars() {
+            starContainer.innerHTML = '';
+            for (let i = 0; i < 30; i++) {
+                const star = document.createElement('div');
+                star.className = 'bg-star';
+                const duration = Math.random() * 3 + 2;
+                const size = Math.random() * 2 + 1;
+
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--duration', `${duration}s`);
+
+                // Màu ngẫu nhiên nhẹ (Xanh/Tím/Trắng)
+                const hue = Math.random() > 0.5 ? 200 : 280; // Blue or Purple hue
+                star.style.backgroundColor = `hsl(${hue}, 80%, 90%)`;
+
+                starContainer.appendChild(star);
+            }
+        }
+
+        function createOrbitStars() {
+            orbitRing.innerHTML = '';
+            const count = 16;
+            for (let i = 0; i < count; i++) {
+                const star = document.createElement('i');
+                star.className = 'fas fa-star orbit-star text-yellow-300';
+                const angle = (i / count) * 2 * Math.PI;
+                // Bán kính = 50% width
+                const x = 50 + 50 * Math.cos(angle);
+                const y = 50 + 50 * Math.sin(angle);
+
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.transform = `translate(-50%, -50%) rotate(${angle * 180 / Math.PI}deg)`;
+                star.style.fontSize = Math.random() > 0.5 ? '1rem' : '1.5rem'; // Random size
+
+                orbitRing.appendChild(star);
+            }
+        }
+
+        function spawnMeteor() {
+            const meteor = document.createElement('div');
+            meteor.className = 'shooting-star';
+            const startX = Math.random() * window.innerWidth;
+            const startY = Math.random() * (window.innerHeight / 2);
+            meteor.style.left = `${startX}px`;
+            meteor.style.top = `${startY}px`;
+            meteor.style.width = `${Math.random() * 100 + 100}px`;
+            const duration = Math.random() * 1 + 1;
+            meteor.style.animation = `shoot ${duration}s linear`;
+            meteorContainer.appendChild(meteor);
+            setTimeout(() => meteor.remove(), duration * 1000);
+        }
+
+        createStars();
+        createOrbitStars();
+        setInterval(spawnMeteor, 3000);
+
+        // --- 3. APP LOGIC ---
+        const studentListEl = document.getElementById('studentList');
+        const studentCountEl = document.getElementById('studentCount');
+        const displayArea = document.getElementById('displayArea');
+        const spinBtn = document.getElementById('spinBtn');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const winnerModal = document.getElementById('winnerModal');
+        const winnerCard = document.getElementById('winnerCard');
+        const winnerNameEl = document.getElementById('winnerName');
+
+        let students = [];
+        let isSpinning = false;
+        let spinInterval;
+
+        studentListEl.addEventListener('input', updateStudentList);
+
+        function updateStudentList() {
+            const rawText = studentListEl.value.trim();
+            students = rawText.split('\n').filter(name => name.trim() !== '');
+            studentCountEl.innerText = `${students.length} học sinh`;
+        }
+
+        function useSampleData() {
+            const sample = [
+                "Nguyễn Văn An", "Trần Thị Bích", "Lê Văn Cường",
+                "Phạm Thị Dung", "Hoàng Văn Em", "Vũ Thị Giang",
+                "Đặng Văn Hùng", "Bùi Thị Khanh", "Đỗ Văn Lâm",
+                "Hồ Thị Mai", "Ngô Văn Nam", "Dương Thị Oanh",
+                "Lý Văn Phúc", "Mai Thị Quyên", "Trịnh Văn Sơn"
+            ];
+            studentListEl.value = sample.join('\n');
+            updateStudentList();
+
+            // Trigger AudioContext resume on interaction
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function clearList() {
+            studentListEl.value = '';
+            updateStudentList();
+            displayArea.innerText = "SẴN SÀNG";
+        }
+
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                studentListEl.value = e.target.result;
+                updateStudentList();
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleSpin() {
+            // Quan trọng: Kích hoạt AudioContext khi người dùng tương tác lần đầu
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            updateStudentList();
+            if (students.length === 0) {
+                alert("Vui lòng nhập danh sách học sinh trước!");
+                return;
+            }
+
+            if (isSpinning) {
+                stopSpin();
+            } else {
+                startSpin();
+            }
+        }
+
+        function startSpin() {
+            isSpinning = true;
+            btnText.innerText = "DỪNG LẠI";
+            btnIcon.className = "fas fa-stop ml-2";
+            spinBtn.classList.add('ring-4', 'ring-pink-500/50');
+
+            // Phát nhạc quay vòng
+            if (!isMuted) {
+                spinAudio.currentTime = 0;
+                spinAudio.play().catch(err => console.log('Spin audio failed:', err));
+            }
+
+            // Visual: Tăng tốc
+            orbitRing.style.animationDuration = "2s";
+            document.querySelector('.center-display').style.boxShadow = "0 0 80px rgba(99, 102, 241, 0.8), inset 0 0 50px rgba(99, 102, 241, 0.5)";
+
+            spinInterval = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * students.length);
+                displayArea.innerText = students[randomIndex];
+
+                // Color flickering effect
+                const colors = ['#a5f3fc', '#ffffff', '#e879f9', '#fde047'];
+                displayArea.style.color = colors[Math.floor(Math.random() * colors.length)];
+
+                playTickSound(); // Âm thanh tíc tắc
+            }, 50);
+        }
+
+        function stopSpin() {
+            isSpinning = false;
+            clearInterval(spinInterval);
+
+            // Dừng nhạc quay vòng
+            spinAudio.pause();
+            spinAudio.currentTime = 0;
+
+            orbitRing.style.animationDuration = "20s";
+            spinBtn.classList.remove('ring-4', 'ring-pink-500/50');
+
+            const winnerIndex = Math.floor(Math.random() * students.length);
+            const winner = students[winnerIndex];
+
+            // Hiệu ứng chậm dần (Slow Down)
+            let slowSteps = 0;
+            let currentDelay = 50;
+            const maxSlowSteps = 12;
+
+            function slowDownLoop() {
+                slowSteps++;
+                currentDelay += (slowSteps * 15); // Tăng delay nhanh hơn để dừng hẳn
+
+                // Vẫn hiện random trong lúc chậm dần
+                const tempIndex = Math.floor(Math.random() * students.length);
+                displayArea.innerText = students[tempIndex];
+                playTickSound(); // Vẫn kêu tíc tắc nhưng chậm hơn
+
+                if (slowSteps < maxSlowSteps) {
+                    setTimeout(slowDownLoop, currentDelay);
+                } else {
+                    finalizeWinner(winner);
+                }
+            }
+            slowDownLoop();
+        }
+
+        function finalizeWinner(winner) {
+            displayArea.innerText = winner;
+            displayArea.style.color = '#fbbf24';
+            document.querySelector('.center-display').style.boxShadow = "0 0 30px rgba(99, 102, 241, 0.5), inset 0 0 20px rgba(99, 102, 241, 0.3)";
+
+            // Reset nút
+            btnText.innerText = "QUAY NGAY";
+            btnIcon.className = "fas fa-rocket ml-2";
+
+            setTimeout(() => {
+                showWinner(winner);
+            }, 600);
+        }
+
+        function showWinner(name) {
+            winnerNameEl.innerText = name;
+            winnerModal.classList.remove('hidden');
+            void winnerModal.offsetWidth; // Force reflow
+            winnerCard.classList.add('active');
+
+            createConfetti();
+            playWinSound(); // Nhạc chiến thắng
+        }
+
+        function closeModal() {
+            winnerCard.classList.remove('active');
+            setTimeout(() => {
+                winnerModal.classList.add('hidden');
+                document.getElementById('confetti').innerHTML = '';
+            }, 300);
+        }
+
+        function createConfetti() {
+            const colors = ['#ef4444', '#22c55e', '#3b82f6', '#eab308', '#ec4899', '#a855f7'];
+            const container = document.getElementById('confetti');
+            container.innerHTML = ''; // Clear old confetti
+
+            for (let i = 0; i < 150; i++) {
+                const conf = document.createElement('div');
+                conf.style.position = 'absolute';
+                conf.style.width = Math.random() * 8 + 4 + 'px';
+                conf.style.height = Math.random() * 8 + 4 + 'px';
+                conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                conf.style.left = Math.random() * 100 + '%';
+                conf.style.top = '-20px';
+                conf.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+
+                // Physics animation
+                const duration = Math.random() * 2 + 3;
+                conf.style.transition = `top ${duration}s ease-out, transform ${duration}s linear, opacity ${duration}s`;
+                conf.style.opacity = Math.random() + 0.5;
+
+                container.appendChild(conf);
+
+                setTimeout(() => {
+                    conf.style.top = '110%';
+                    conf.style.transform = `rotate(${Math.random() * 720}deg) translateX(${Math.random() * 100 - 50}px)`;
+                    conf.style.opacity = 0;
+                }, 50);
+            }
+        }
+    </script>
+</body>
+
+</html>

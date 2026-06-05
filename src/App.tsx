@@ -383,6 +383,28 @@ const seedData: AppData = {
       author: "Ban quản trị",
       createdAt: "2026-06-05T08:00:00.000Z",
     },
+    {
+      id: "d-5",
+      title: "Vòng xoay ngôi sao",
+      category: "Game học tập",
+      subject: "Tất cả các môn",
+      description: "Công cụ chọn học sinh ngẫu nhiên bằng vòng xoay ngôi sao, tạo không khí hào hứng khi gọi tên hoặc chia lượt tham gia.",
+      appUrl: "/Vong-xoay-ngoi-sao/ngoisao.html",
+      thumbnailUrl: "/banner-dashboard.jpg",
+      author: "Ban quản trị",
+      createdAt: "2026-06-05T09:00:00.000Z",
+    },
+    {
+      id: "d-6",
+      title: "Nhận xét Thông tư 27",
+      category: "AI hỗ trợ",
+      subject: "Tất cả các môn",
+      description: "Công cụ hỗ trợ tạo và quản lý nhận xét học sinh theo Thông tư 27, có kho câu nhận xét và chế độ AI.",
+      appUrl: "/nhan-xet-tt27/index.html",
+      thumbnailUrl: "/banner-dashboard.jpg",
+      author: "Ban quản trị",
+      createdAt: "2026-06-05T09:05:00.000Z",
+    },
   ],
 };
 

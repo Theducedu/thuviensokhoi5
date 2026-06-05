@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TT27 Auto Nhận Xét</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="/nhan-xet-tt27/assets/index-DmPE89Ly.js"></script>
+  <link rel="stylesheet" crossorigin href="/nhan-xet-tt27/assets/index-CO1wzAgn.css">
+  <style>
+    .library-back-btn {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 9999;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.86);
+      color: #fff;
+      cursor: pointer;
+      font: 700 14px/1 Inter, sans-serif;
+      padding: 10px 14px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.24);
+    }
+
+    .library-back-btn:hover {
+      background: rgba(30, 41, 59, 0.96);
+    }
+  </style>
+</head>
+<body>
+  <button class="library-back-btn" id="library-back-btn" type="button">← Quay lại</button>
+  <div id="app">
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <span class="logo-icon">📝</span>
+          <div>
+            <h1>TT27 Auto Nhận Xét</h1>
+            <p>Tự động sinh nhận xét theo Thông tư 27</p>
+          </div>
+        </div>
+        <div class="mode-switch" id="modeSwitch">
+          <button class="mode-btn active" data-mode="bank" title="Sử dụng kho câu nhận xét cục bộ có sẵn. Tự động xáo trộn chống lặp, an toàn tuyệt đối và không cần mạng Internet.">🗂️ Kho Nhận Xét</button>
+          <button class="mode-btn" data-mode="ai" title="Dùng trí tuệ nhân tạo (cần API Key) để tự viết sinh động từng câu nhận xét riêng biệt cho mỗi học sinh theo đúng chuẩn TT27.">🤖 AI (Groq)</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Bảng So Sánh (Chỉ hiện ở chế độ Kho Nhận Xét) -->
+      <div class="mode-guide" id="modeGuide">
+        <h3 style="font-size: 1rem; color: #94a3b8; margin-bottom: 0.8rem;">💡 Hướng dẫn chọn chế độ:</h3>
+        <div class="guide-grid">
+          <div class="guide-box">
+            <h4>🗂️ Kho Nhận Xét (Nhanh & Ổn định)</h4>
+            <p>Sử dụng hệ thống câu có sẵn trên bộ nhớ máy tính. Tốc độ chớp mắt, không yêu cầu Internet, tuyệt đối bảo mật và tự động xáo trộn chống lặp.</p>
+          </div>
+          <div class="guide-box">
+            <h4>🤖 AI Groq (Thông minh & Sáng tạo)</h4>
+            <p>Trí tuệ Nhân tạo tự viết từng đoạn văn cho riêng mỗi học sinh theo chuẩn TT27. Yêu cầu có kết nối Internet và cung cấp mã khóa API (Miễn phí).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Config Panel -->
+      <div class="ai-panel hidden" id="aiPanel">
+        <div class="ai-config">
+          <label style="display: flex; justify-content: space-between; align-items: center;">
+            <span>🔑 Groq API Key</span>
+            <span id="openGuideBtn" style="color: #60a5fa; font-size: 0.85rem; cursor: pointer; text-decoration: underline;">👉 Hướng dẫn lấy API Key</span>
+          </label>
+          <div class="api-row">
+            <input type="password" id="groqKey" placeholder="gsk_..." />
+            <button id="testAi" class="btn-secondary">Kiểm tra</button>
+          </div>
+          <div class="ai-options">
+            <label>Model:</label>
+            <select id="groqModel">
+              <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Nhanh)</option>
+              <option value="llama3-70b-8192">llama3-70b-8192 (Chất lượng cao)</option>
+              <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+            </select>
+          </div>
+          <div id="aiStatus" class="status-msg"></div>
+        </div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-content">
+          <div class="upload-icon">📂</div>
+          <h2>Kéo thả file Excel vào đây</h2>
+          <p>Hỗ trợ file nhận xét từ vnEdu và SMAS (.xlsx)</p>
+          <button class="btn-primary" id="browseBtn">Chọn File</button>
+          <input type="file" id="fileInput" accept=".xlsx,.xls" hidden />
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-section hidden" id="progressSection">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p id="progressText">Đang xử lý...</p>
+      </div>
+
+      <!-- Preview Table -->
+      <div class="preview-section hidden" id="previewSection">
+        <div class="preview-header">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <h3 id="previewTitle">Xem trước dữ liệu</h3>
+            <select id="sheetSelect" class="input-field hidden" style="padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #f8fafc; cursor: pointer; max-width: 250px; font-size: 0.9rem;"></select>
+          </div>
+          <div class="preview-actions" id="previewActionsInitial">
+            <span class="badge" id="statsBadge"></span>
+            <button class="btn-secondary" id="resetBtn">↩ Tải file khác</button>
+            <button class="btn-primary" id="processBtn">✨ Tạo Nhận Xét</button>
+          </div>
+          <div class="preview-actions hidden" id="previewActionsDone">
+            <span class="badge" style="background:#14532d;color:#86efac;border-color:#166534">✅ Đã tạo xong nhận xét</span>
+            <button class="btn-secondary" id="revertBtn">↩ Hoàn tác</button>
+            <button class="btn-primary" id="downloadBtn2">⬇️ Tải file Excel</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="previewTable">
+            <thead id="previewHead"></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-section hidden" id="resultSection">
+        <div class="result-card">
+          <div class="result-icon">✅</div>
+          <h3>Hoàn thành!</h3>
+          <p id="resultMsg"></p>
+          <div class="result-actions">
+            <button class="btn-primary" id="downloadBtn">⬇️ Tải file Excel</button>
+            <button class="btn-secondary" id="resetBtn2">Làm lại</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info Cards -->
+      <div class="info-grid" id="infoGrid">
+        <div class="info-card">
+          <div class="info-icon">📚</div>
+          <h4>Chung mọi bộ sách</h4>
+          <p>Hỗ trợ Chân trời sáng tạo, Cánh Diều và Kết nối tri thức</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">🎯</div>
+          <h4>Đúng Thông tư 27</h4>
+          <p>Nhận xét theo mức T/H/C (Môn học) và T/Đ/C (NL, PC)</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">🔄</div>
+          <h4>Không trùng lặp</h4>
+          <p>Mỗi học sinh được chọn câu khác nhau từ kho 20+ câu/mức</p>
+        </div>
+        <div class="info-card">
+          <div class="info-icon">🔒</div>
+          <h4>Bảo mật tuyệt đối</h4>
+          <p>Xử lý hoàn toàn trên máy, không upload dữ liệu lên mạng</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-left">
+          <h3>TT27 Auto Nhận Xét</h3>
+          <p>Phần mềm tự động sinh nhận xét học sinh chuẩn Thông tư 27/2020/TT-BGDĐT.</p>
+        </div>
+        <div class="footer-right">
+          <p><strong>Developed by:</strong> Nguyễn Thế Đức</p>
+          <p><strong>Phiên bản:</strong> 1.0.0 (Bản nhẹ Web)</p>
+          <p><em>Mọi dữ liệu giáo dục đều được xử lý cục bộ trên máy tính của bạn.</em></p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Bản quyền thuộc về tác giả. Công cụ chỉ lưu hành và sử dụng nội bộ.</p>
+      </div>
+    </footer>
+
+    <!-- Guidance Modal -->
+    <div class="modal-overlay" id="guideModal">
+      <div class="modal-content">
+        <button class="modal-close" id="closeGuideBtn">&times;</button>
+        <h3>Hướng dẫn lấy API Key Groq</h3>
+        <ol>
+          <li>Truy cập trang web: <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></li>
+          <li>Đăng nhập bằng tài khoản Google (hoặc tạo tài khoản mới).</li>
+          <li>Nhấn vào nút <strong>Create API Key</strong>. Nhập tên tùy ý (VD: <em>nhanxettt27</em>) rồi Submit.</li>
+          <li>Sao chép toàn bộ dãy mã có dạng <code>gsk_...</code> vừa xuất hiện trên màn hình.</li>
+          <li>Quay lại ứng dụng này, dán dãy mã vừa chép vào ô "Groq API Key" và nhấn <strong>Kiểm tra</strong>.</li>
+        </ol>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1rem; border-top: 1px solid #334155; padding-top: 1rem;">
+          <em>💡 Mã API Key từ Groq hiện đang được cung cấp hoàn toàn miễn phí. Tốc độ phản hồi cực nhanh, phù hợp cho việc tự động điền hàng trăm nhận xét trong vài giây.</em>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('library-back-btn')?.addEventListener('click', function () {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = '/';
+      }
+    });
+  </script>
+</body>
+</html>
