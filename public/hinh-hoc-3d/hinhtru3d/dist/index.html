@@ -1,44 +1,39 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/hinh-hoc-3d/hinhtru3d/dist/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>hinhtru3d</title>
-  <script type="module" crossorigin src="/hinh-hoc-3d/hinhtru3d/dist/assets/index-J1UjzWJo.js"></script>
-  <link rel="stylesheet" crossorigin href="/hinh-hoc-3d/hinhtru3d/dist/assets/index-BcDfR1Gq.css">
-</head>
-
-<body>
-  <div id="root"></div>
-  <script>
-    // Listen for messages from parent window to hide control panel
-    window.addEventListener('message', function (event) {
-      if (event.data && event.data.type === 'HIDE_CONTROL_PANEL') {
-        // Hide the control panel sidebar and bottom status bar
-        const style = document.createElement('style');
-        style.textContent = `
-          .panel-container,
-          .control-panel {
-            display: none !important;
-          }
-          .app {
-            grid-template-columns: 1fr !important;
-          }
-          .canvas-container {
-            grid-column: 1 !important;
-          }
-          .bottom-status-track,
-          .bottom-status-container,
-          .status-credit-center {
-            display: none !important;
-          }
-        `;
-        document.head.appendChild(style);
-      }
-    });
-  </script>
-</body>
-
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hinhtru3d</title>
+    <script type="module" crossorigin src="./assets/index-J1UjzWJo.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BcDfR1Gq.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'HIDE_CONTROL_PANEL') {
+          const style = document.createElement('style');
+          style.textContent = `
+            .panel-container,
+            .control-panel {
+              display: none !important;
+            }
+            .app {
+              grid-template-columns: 1fr !important;
+            }
+            .canvas-container {
+              grid-column: 1 !important;
+            }
+            .bottom-status-track,
+            .bottom-status-container,
+            .status-credit-center {
+              display: none !important;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+      });
+    </script>
+  </body>
 </html>

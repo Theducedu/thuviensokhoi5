@@ -1,8 +1,6 @@
 /**
- * Cylinder Shape.
- *
- * Ported from the standalone hinhtru3d source so the cylinder unfolds by
- * morphing the curved side into a rectangle and moving the two circular bases.
+ * Cylinder Shape - Hình trụ (Version 3 - Simple Direct Approach)
+ * Khai triển: HCN nằm ngang + 2 hình tròn ở giữa cạnh trên/dưới
  */
 
 class CylinderShape {
@@ -13,276 +11,211 @@ class CylinderShape {
         this.height = 4;
         this.opacity = 0.8;
         this.unfoldProgress = 0;
-        this.showVertices = true;
-        this.showEdges = true;
-        this.showFaces = true;
-
-        this.bodyMesh = null;
-        this.bodyWireframe = null;
-        this.topCapGroup = null;
-        this.bottomCapGroup = null;
-        this.edgeObjects = [];
-        this.vertexObjects = [];
-        this.faceObjects = [];
 
         this.createShape();
         this.scene.add(this.group);
     }
 
     createShape() {
+        // Clear existing
         while (this.group.children.length > 0) {
             const child = this.group.children[0];
             this.group.remove(child);
-            this.disposeObject(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
         }
 
-        this.edgeObjects = [];
-        this.vertexObjects = [];
-        this.faceObjects = [];
+        // Tạo hình trụ 3D (khi đóng)
+        this.createSolidCylinder();
 
-        this.createBody();
-        this.createCaps();
-        this.createGuides();
+        // Tạo các phần khai triển (khi mở)
+        this.createUnfoldMeshes();
+
         this.setUnfoldProgress(this.unfoldProgress);
-        this.applyVisibility();
     }
 
-    createBody() {
-        const bodyGeometry = this.createLateralGeometry();
-        const bodyMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffd54f,
+    createSolidCylinder() {
+        this.solidGroup = new THREE.Group();
+
+        // Thân trụ
+        const bodyGeo = new THREE.CylinderGeometry(this.radius, this.radius, this.height, 64);
+        const bodyMat = new THREE.MeshPhongMaterial({
+            color: 0xffdd00,
             transparent: true,
             opacity: this.opacity,
             side: THREE.DoubleSide
         });
+        this.solidGroup.add(new THREE.Mesh(bodyGeo, bodyMat));
 
-        this.bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        this.group.add(this.bodyMesh);
-        this.faceObjects.push(this.bodyMesh);
+        // Viền
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff });
+        this.solidGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo), edgeMat));
 
-        const wireMaterial = new THREE.MeshBasicMaterial({
-            color: 0x42a5f5,
-            wireframe: true,
-            transparent: true,
-            opacity: 0.45
-        });
-        this.bodyWireframe = new THREE.Mesh(bodyGeometry.clone(), wireMaterial);
-        this.group.add(this.bodyWireframe);
-        this.edgeObjects.push(this.bodyWireframe);
-    }
-
-    createLateralGeometry() {
-        const progress = this.getBodyProgress();
-        const circumference = this.getCircumference();
-        const segmentsW = 64;
-        const segmentsH = 1;
-        const vertices = [];
-        const normals = [];
-        const uvs = [];
-        const indices = [];
-
-        for (let j = 0; j <= segmentsH; j++) {
-            const v = j / segmentsH;
-            const y = this.height / 2 - v * this.height;
-
-            for (let i = 0; i <= segmentsW; i++) {
-                const t = i / segmentsW;
-                const theta = (t - 0.5) * Math.PI * 2;
-
-                const cylinderX = Math.sin(theta) * this.radius;
-                const cylinderZ = Math.cos(theta) * this.radius;
-                const flatX = (t - 0.5) * circumference;
-                const flatZ = 0;
-
-                vertices.push(
-                    THREE.MathUtils.lerp(cylinderX, flatX, progress),
-                    y,
-                    THREE.MathUtils.lerp(cylinderZ, flatZ, progress)
-                );
-                normals.push(0, 0, 1);
-                uvs.push(t, 1 - v);
-            }
-        }
-
-        for (let j = 0; j < segmentsH; j++) {
-            for (let i = 0; i < segmentsW; i++) {
-                const a = j * (segmentsW + 1) + i;
-                const b = a + 1;
-                const c = (j + 1) * (segmentsW + 1) + i;
-                const d = c + 1;
-                indices.push(a, c, b, b, c, d);
-            }
-        }
-
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-        geometry.setIndex(indices);
-        geometry.computeBoundingSphere();
-        return geometry;
-    }
-
-    createCaps() {
-        this.topCapGroup = this.createCapGroup(true);
-        this.bottomCapGroup = this.createCapGroup(false);
-        this.group.add(this.topCapGroup);
-        this.group.add(this.bottomCapGroup);
-    }
-
-    createCapGroup(isTop) {
-        const capGroup = new THREE.Group();
-        const capGeometry = new THREE.CircleGeometry(this.radius, 64);
-        const capMaterial = new THREE.MeshStandardMaterial({
-            color: 0xef5350,
+        // Nắp trên
+        const capGeo = new THREE.CircleGeometry(this.radius, 64);
+        const capMat = new THREE.MeshPhongMaterial({
+            color: 0x00e5ff,
             transparent: true,
             opacity: this.opacity,
-            side: THREE.DoubleSide,
-            metalness: 0.15,
-            roughness: 0.45
-        });
-
-        const capMesh = new THREE.Mesh(capGeometry, capMaterial);
-        capGroup.add(capMesh);
-        this.faceObjects.push(capMesh);
-
-        const ringGeometry = new THREE.RingGeometry(Math.max(this.radius - 0.035, 0.01), this.radius, 64);
-        const ringMaterial = new THREE.MeshBasicMaterial({
-            color: 0x42a5f5,
-            transparent: true,
-            opacity: 0.9,
             side: THREE.DoubleSide
         });
-        const edgeRing = new THREE.Mesh(ringGeometry, ringMaterial);
-        capGroup.add(edgeRing);
-        this.edgeObjects.push(edgeRing);
+        const topCap = new THREE.Mesh(capGeo, capMat);
+        topCap.position.y = this.height / 2;
+        topCap.rotation.x = -Math.PI / 2;
+        this.solidGroup.add(topCap);
 
-        const centerPoint = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 16, 16),
-            new THREE.MeshBasicMaterial({ color: 0xffffff })
-        );
-        capGroup.add(centerPoint);
-        this.vertexObjects.push(centerPoint);
+        // Nắp dưới
+        const bottomCap = new THREE.Mesh(capGeo.clone(), capMat.clone());
+        bottomCap.position.y = -this.height / 2;
+        bottomCap.rotation.x = Math.PI / 2;
+        this.solidGroup.add(bottomCap);
 
-        const radiusLine = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(0, 0, 0.03),
-                new THREE.Vector3(this.radius, 0, 0.03)
-            ]),
-            new THREE.LineBasicMaterial({ color: 0xffffff })
-        );
-        capGroup.add(radiusLine);
-        this.edgeObjects.push(radiusLine);
-
-        capGroup.userData.isTop = isTop;
-        return capGroup;
-    }
-
-    createGuides() {
-        const axisLine = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(0, -this.height / 2, 0),
-                new THREE.Vector3(0, this.height / 2, 0)
-            ]),
-            new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.2, gapSize: 0.12 })
-        );
+        // Trục và bán kính helpers
+        const axisPoints = [
+            new THREE.Vector3(0, -this.height / 2, 0),
+            new THREE.Vector3(0, this.height / 2, 0)
+        ];
+        const axisMat = new THREE.LineDashedMaterial({ color: 0xff4444, dashSize: 0.2, gapSize: 0.1 });
+        const axisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(axisPoints), axisMat);
         axisLine.computeLineDistances();
-        this.group.add(axisLine);
-        this.edgeObjects.push(axisLine);
+        this.solidGroup.add(axisLine);
 
-        this.heightLine = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(this.radius + 0.35, -this.height / 2, 0),
-                new THREE.Vector3(this.radius + 0.35, this.height / 2, 0)
-            ]),
-            new THREE.LineBasicMaterial({ color: 0xffffff })
+        this.group.add(this.solidGroup);
+    }
+
+    createUnfoldMeshes() {
+        this.unfoldGroup = new THREE.Group();
+
+        const circumference = 2 * Math.PI * this.radius;
+
+        // === THÂN (HCN) ===
+        const bodyGeo = new THREE.PlaneGeometry(circumference, this.height);
+        const bodyMat = new THREE.MeshPhongMaterial({
+            color: 0xffdd00,
+            transparent: true,
+            opacity: this.opacity,
+            side: THREE.DoubleSide
+        });
+        this.bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        this.unfoldGroup.add(this.bodyMesh);
+
+        // Viền thân
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0x0000ff });
+        this.bodyEdges = new THREE.LineSegments(new THREE.EdgesGeometry(bodyGeo), edgeMat);
+        this.unfoldGroup.add(this.bodyEdges);
+
+        // === NẮP TRÊN ===
+        const capGeo = new THREE.CircleGeometry(this.radius, 64);
+        const capMat = new THREE.MeshPhongMaterial({
+            color: 0x00e5ff,
+            transparent: true,
+            opacity: this.opacity,
+            side: THREE.DoubleSide
+        });
+        this.topCapMesh = new THREE.Mesh(capGeo, capMat);
+        this.unfoldGroup.add(this.topCapMesh);
+
+        // Viền nắp trên
+        const capEdgeGeo = new THREE.BufferGeometry().setFromPoints(
+            new THREE.Path().absarc(0, 0, this.radius, 0, Math.PI * 2).getPoints(64)
         );
-        this.group.add(this.heightLine);
-        this.edgeObjects.push(this.heightLine);
+        this.topCapEdge = new THREE.LineLoop(capEdgeGeo, edgeMat.clone());
+        this.unfoldGroup.add(this.topCapEdge);
+
+        // === NẮP DƯỚI ===
+        this.bottomCapMesh = new THREE.Mesh(capGeo.clone(), capMat.clone());
+        this.unfoldGroup.add(this.bottomCapMesh);
+
+        this.bottomCapEdge = new THREE.LineLoop(capEdgeGeo.clone(), edgeMat.clone());
+        this.unfoldGroup.add(this.bottomCapEdge);
+
+        this.group.add(this.unfoldGroup);
     }
 
     setUnfoldProgress(progress) {
         this.unfoldProgress = progress;
 
-        this.updateBodyGeometry();
-        this.updateCapTransform(this.topCapGroup, true);
-        this.updateCapTransform(this.bottomCapGroup, false);
-        this.updateHeightGuide();
-        this.applyVisibility();
-    }
+        const isClosed = progress < 0.01;
 
-    updateBodyGeometry() {
-        if (!this.bodyMesh || !this.bodyWireframe) return;
+        // Toggle visibility
+        if (this.solidGroup) this.solidGroup.visible = isClosed;
+        if (this.unfoldGroup) this.unfoldGroup.visible = !isClosed;
 
-        const bodyGeometry = this.createLateralGeometry();
-        this.bodyMesh.geometry.dispose();
-        this.bodyWireframe.geometry.dispose();
-        this.bodyMesh.geometry = bodyGeometry;
-        this.bodyWireframe.geometry = bodyGeometry.clone();
-    }
-
-    updateCapTransform(capGroup, isTop) {
-        if (!capGroup) return;
-
-        const capProgress = this.getCapProgress();
-        const bodyProgress = this.getBodyProgress();
-        const circumference = this.getCircumference();
-        const yDirection = isTop ? 1 : -1;
-        const closedY = yDirection * this.height / 2;
-        const openY = yDirection * (this.height / 2 + this.radius);
-        const flatY = isTop ? this.height / 2 + this.radius : -this.height / 2 - this.radius;
-
-        const yAfterCap = THREE.MathUtils.lerp(closedY, openY, capProgress);
-        const y = THREE.MathUtils.lerp(yAfterCap, flatY, bodyProgress);
-        const z = THREE.MathUtils.lerp(0, 0.02, bodyProgress);
-
-        capGroup.position.set(0, y, z);
-
-        const closedRotation = isTop ? -Math.PI / 2 : Math.PI / 2;
-        const rotationAfterCap = THREE.MathUtils.lerp(closedRotation, 0, capProgress);
-        capGroup.rotation.x = THREE.MathUtils.lerp(rotationAfterCap, 0, bodyProgress);
-
-        capGroup.position.x = 0;
-        if (bodyProgress > 0.001) {
-            capGroup.position.x = 0;
-            capGroup.position.y = flatY;
-            capGroup.position.z = 0.05;
+        if (!isClosed) {
+            this.updateUnfoldAnimation(progress);
         }
-
-        if (this.unfoldProgress > 0.99) {
-            capGroup.position.x = 0;
-            capGroup.position.y = flatY;
-            capGroup.position.z = 0.05;
-        }
-
-        capGroup.userData.circumference = circumference;
     }
 
-    updateHeightGuide() {
-        if (!this.heightLine) return;
+    updateUnfoldAnimation(progress) {
+        // Chia animation thành 2 giai đoạn:
+        // 0-50%: Thân trải từ bọc sang phẳng
+        // 50-100%: Nắp mở ra
 
-        const bodyProgress = this.getBodyProgress();
-        const closedX = this.radius + 0.35;
-        const openX = this.getCircumference() / 2 + 0.45;
-        const x = THREE.MathUtils.lerp(closedX, openX, bodyProgress);
+        let bodyProgress = Math.min(progress / 0.5, 1);
+        let capProgress = Math.max((progress - 0.5) / 0.5, 0);
 
-        this.heightLine.geometry.dispose();
-        this.heightLine.geometry = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(x, -this.height / 2, 0.08),
-            new THREE.Vector3(x, this.height / 2, 0.08)
-        ]);
-    }
+        const easedBody = Calculations.easing.easeInOutCubic(bodyProgress);
+        const easedCap = Calculations.easing.easeOutCubic(capProgress);
 
-    getCapProgress() {
-        return Calculations.easing.easeInOutCubic(Math.min(this.unfoldProgress * 2, 1));
-    }
+        // === TRẠNG THÁI CUỐI (100% mở) ===
+        // - Thân: nằm phẳng trên mặt đất (Y = 0), rotation X = -90°
+        // - Nắp trên: phía sau thân (Z = -height/2 - radius), nằm phẳng
+        // - Nắp dưới: phía trước thân (Z = +height/2 + radius), nằm phẳng
 
-    getBodyProgress() {
-        return Calculations.easing.easeInOutCubic(Math.max((this.unfoldProgress - 0.5) * 2, 0));
-    }
+        // === THÂN ===
+        // Từ đứng (rotation.x = 0) sang nằm (rotation.x = -PI/2)
+        this.bodyMesh.rotation.x = -Math.PI / 2 * easedBody;
+        this.bodyEdges.rotation.x = -Math.PI / 2 * easedBody;
 
-    getCircumference() {
-        return 2 * Math.PI * this.radius;
+        // Vị trí: Y giảm từ 0 về -height/2 (để tâm HCN nằm trên mặt đất)
+        // Thực ra khi xoay -90°, tâm sẽ vẫn ở tâm, không cần dịch Y
+        this.bodyMesh.position.y = 0;
+        this.bodyEdges.position.y = 0;
+
+        // === NẮP TRÊN ===
+        // Giai đoạn 1 (0-50%): Nắp di chuyển từ đỉnh trụ về cạnh sau của thân
+        // Giai đoạn 2 (50-100%): Nắp xoay từ đứng sang nằm
+
+        // Vị trí ban đầu (trụ đóng): Y = height/2, Z = 0
+        // Vị trí giai đoạn 1 kết thúc: Y = 0, Z = -height/2 (sát cạnh sau thân)
+        // Vị trí giai đoạn 2 kết thúc: Y = 0, Z = -height/2 - radius (tâm dịch ra xa)
+
+        const topCapY = this.height / 2 * (1 - easedBody);
+        const topCapZ_phase1 = -this.height / 2 * easedBody;
+        const topCapZ_phase2 = -this.radius * easedCap;
+        const topCapZ = topCapZ_phase1 + topCapZ_phase2;
+
+        this.topCapMesh.position.set(0, topCapY, topCapZ);
+        this.topCapEdge.position.set(0, topCapY, topCapZ);
+
+        // Xoay nắp trên:
+        // Ban đầu: rotation.x = -PI/2 (nằm ngang úp xuống thân trụ)
+        // Giai đoạn 1: xoay theo thân từ -PI/2 về 0 (đứng thẳng)
+        // Giai đoạn 2: xoay từ 0 về -PI/2 (nằm phẳng trên mặt đất, hướng lên)
+        const topCapRotX = -Math.PI / 2 * (1 - easedBody) + (-Math.PI / 2 * easedCap);
+        this.topCapMesh.rotation.x = topCapRotX;
+        this.topCapEdge.rotation.x = topCapRotX;
+
+        // === NẮP DƯỚI ===
+        // Vị trí ban đầu: Y = -height/2, Z = 0
+        // Vị trí giai đoạn 1 kết thúc: Y = 0, Z = +height/2 (sát cạnh trước thân)
+        // Vị trí giai đoạn 2 kết thúc: Y = 0, Z = +height/2 + radius
+
+        const bottomCapY = -this.height / 2 * (1 - easedBody);
+        const bottomCapZ_phase1 = this.height / 2 * easedBody;
+        const bottomCapZ_phase2 = this.radius * easedCap;
+        const bottomCapZ = bottomCapZ_phase1 + bottomCapZ_phase2;
+
+        this.bottomCapMesh.position.set(0, bottomCapY, bottomCapZ);
+        this.bottomCapEdge.position.set(0, bottomCapY, bottomCapZ);
+
+        // Xoay nắp dưới:
+        // Ban đầu: rotation.x = PI/2 (nằm ngang ngửa lên thân trụ)
+        // Giai đoạn 1: xoay từ PI/2 về 0 (đứng thẳng)
+        // Giai đoạn 2: xoay từ 0 về -PI/2 (nằm phẳng, hướng lên)
+        const bottomCapRotX = Math.PI / 2 * (1 - easedBody) + (-Math.PI / 2 * easedCap);
+        this.bottomCapMesh.rotation.x = bottomCapRotX;
+        this.bottomCapEdge.rotation.x = bottomCapRotX;
     }
 
     updateSize(radius, height) {
@@ -293,43 +226,25 @@ class CylinderShape {
 
     updateOpacity(opacity) {
         this.opacity = opacity;
-        this.faceObjects.forEach((object) => {
-            if (object.material && object.material.opacity !== undefined) {
-                object.material.opacity = opacity;
+        this.group.traverse(child => {
+            if (child.material && child.material.opacity !== undefined) {
+                child.material.opacity = opacity;
             }
         });
     }
 
     setVisibility(options) {
-        this.showVertices = options.vertices;
-        this.showEdges = options.edges;
-        this.showFaces = options.faces;
-        this.applyVisibility();
-    }
-
-    applyVisibility() {
-        this.faceObjects.forEach((object) => {
-            object.visible = this.showFaces;
-        });
-        this.edgeObjects.forEach((object) => {
-            object.visible = this.showEdges;
-        });
-        this.vertexObjects.forEach((object) => {
-            object.visible = this.showVertices && this.unfoldProgress < 0.01;
-        });
+        // Can be extended
     }
 
     getStats() {
         const calc = Calculations.cylinder;
         return {
-            vertices: calc.vertices,
-            edges: calc.edges,
-            faces: calc.faces,
             radius: this.radius,
             height: this.height,
             volume: Calculations.formatNumber(calc.volume(this.radius, this.height)),
-            area: Calculations.formatNumber(calc.surfaceArea(this.radius, this.height)),
-            lateralArea: Calculations.formatNumber(2 * Math.PI * this.radius * this.height)
+            lateralArea: Calculations.formatNumber(calc.lateralArea(this.radius, this.height)),
+            totalArea: Calculations.formatNumber(calc.totalArea(this.radius, this.height))
         };
     }
 
@@ -337,7 +252,7 @@ class CylinderShape {
         return [
             {
                 id: 'radius',
-                label: 'BAN KINH',
+                label: 'BÁN KÍNH',
                 min: 0.5,
                 max: 4,
                 step: 0.1,
@@ -346,7 +261,7 @@ class CylinderShape {
             },
             {
                 id: 'height',
-                label: 'CHIEU CAO',
+                label: 'CHIỀU CAO',
                 min: 1,
                 max: 8,
                 step: 0.1,
@@ -355,7 +270,7 @@ class CylinderShape {
             },
             {
                 id: 'opacity',
-                label: 'DO TRONG SUOT',
+                label: 'ĐỘ TRONG SUỐT',
                 min: 0.1,
                 max: 1,
                 step: 0.1,
@@ -375,21 +290,17 @@ class CylinderShape {
         }
     }
 
-    disposeObject(object) {
-        object.traverse((child) => {
+    dispose() {
+        this.scene.remove(this.group);
+        this.group.traverse(child => {
             if (child.geometry) child.geometry.dispose();
             if (child.material) {
                 if (Array.isArray(child.material)) {
-                    child.material.forEach((material) => material.dispose());
+                    child.material.forEach(m => m.dispose());
                 } else {
                     child.material.dispose();
                 }
             }
         });
-    }
-
-    dispose() {
-        this.scene.remove(this.group);
-        this.disposeObject(this.group);
     }
 }

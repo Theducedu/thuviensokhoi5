@@ -206,6 +206,7 @@ class App {
         if (slider) slider.value = value;
         if (display) display.textContent = Math.round(value) + '%';
 
+        // For cylinder - send to iframe
         if (this.currentShapeType === 'cylinder') {
             this.updateIframeParams({ unfoldProgress: value });
         } else if (this.currentShape && typeof this.currentShape.setUnfoldProgress === 'function') {
@@ -293,7 +294,11 @@ class App {
             'rectangular-prism': 'HÌNH HỘP CHỮ NHẬT',
             'pyramid': 'HÌNH CHÓP TỨ GIÁC',
             'sphere': 'HÌNH CẦU',
-            'cylinder': 'HÌNH TRỤ'
+            'cylinder': 'HÌNH TRỤ',
+            'triangle': 'HÌNH TAM GIÁC',
+            'rectangle': 'HÌNH CHỮ NHẬT',
+            'circle': 'HÌNH TRÒN',
+            'trapezoid': 'HÌNH THANG'
         };
         const shapeName = shapeNames[shapeType] || 'HÌNH 3D';
 
@@ -303,32 +308,32 @@ class App {
         const nameOverlay = document.getElementById('shape-name-overlay');
         if (nameOverlay) nameOverlay.textContent = shapeName;
 
+        // Handle iframe for cylinder (hinhtru3d) - keep sidebar visible!
         const iframe = document.getElementById('hinhtru3d-iframe');
         const canvas = document.getElementById('canvas3d');
         const canvasOverlays = document.querySelectorAll('.shape-name-overlay, .canvas-actions, .canvas-hint');
 
         if (shapeType === 'cylinder') {
+            // Show hinhtru3d iframe, hide main canvas but KEEP SIDEBAR
             iframe?.classList.remove('hidden');
             if (canvas) canvas.style.display = 'none';
             canvasOverlays.forEach(el => el.style.display = 'none');
 
+            // Dispose current shape
             if (this.currentShape) {
                 this.currentShape.dispose();
                 this.currentShape = null;
             }
 
+            // Tell iframe to hide its own control panel
             this.sendToIframe({ type: 'HIDE_CONTROL_PANEL' });
-            this.updateIframeParams({
-                unfoldProgress: this.unfoldProgress,
-                radius: parseFloat(document.getElementById('control-radius')?.value || 2),
-                height: parseFloat(document.getElementById('control-height')?.value || 4),
-                opacity: parseFloat(document.getElementById('control-opacity')?.value || 85)
-            });
         } else {
+            // Hide iframe, show canvas
             iframe?.classList.add('hidden');
             if (canvas) canvas.style.display = 'block';
             canvasOverlays.forEach(el => el.style.display = '');
 
+            // Load new shape
             this.loadShape(shapeType);
         }
 
@@ -338,6 +343,7 @@ class App {
         this.updateLessonContent();
     }
 
+    // Send message to hinhtru3d iframe
     sendToIframe(message) {
         const iframe = document.getElementById('hinhtru3d-iframe');
         if (iframe && iframe.contentWindow) {
@@ -345,6 +351,7 @@ class App {
         }
     }
 
+    // Update hinhtru3d iframe with new parameters
     updateIframeParams(params) {
         this.sendToIframe({
             type: 'UPDATE_PARAMS',
@@ -376,6 +383,21 @@ class App {
             'cylinder': [
                 { id: 'radius', label: '📏 BÁN KÍNH (r)', min: 1, max: 5, step: 0.5, default: 2, unit: 'cm' },
                 { id: 'height', label: '📐 CHIỀU CAO (h)', min: 2, max: 8, step: 0.5, default: 4, unit: 'cm' }
+            ],
+            'triangle': [
+                { id: 'side', label: '📏 CẠNH (a)', min: 1, max: 8, step: 0.5, default: 4, unit: 'cm' }
+            ],
+            'rectangle': [
+                { id: 'width', label: '📏 DÀI (w)', min: 1, max: 8, step: 0.5, default: 5, unit: 'cm' },
+                { id: 'height', label: '📐 RỘNG (h)', min: 1, max: 8, step: 0.5, default: 3, unit: 'cm' }
+            ],
+            'circle': [
+                { id: 'radius', label: '📏 BÁN KÍNH (r)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' }
+            ],
+            'trapezoid': [
+                { id: 'topBase', label: '📏 ĐÁY NHỎ (a)', min: 1, max: 5, step: 0.5, default: 2, unit: 'cm' },
+                { id: 'bottomBase', label: '📏 ĐÁY LỚN (b)', min: 2, max: 8, step: 0.5, default: 5, unit: 'cm' },
+                { id: 'height', label: '📐 CHIỀU CAO (h)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' }
             ]
         };
 
@@ -387,7 +409,7 @@ class App {
                     <label class="slider-label">${param.label}</label>
                     <span class="slider-value" id="value-${param.id}">${param.default} ${param.unit}</span>
                 </div>
-                <input type="range" class="slider-range" id="control-${param.id}" 
+                <input type="range" class="slider-range" id="control-${param.id}"
                        min="${param.min}" max="${param.max}" step="${param.step}" value="${param.default}">
                 <div class="slider-bounds">
                     <span>${param.min}${param.unit}</span>
@@ -408,16 +430,21 @@ class App {
                     const value = parseFloat(e.target.value);
                     valueDisplay.textContent = `${value} ${param.unit}`;
 
+                    // For cylinder - send to iframe
                     if (this.currentShapeType === 'cylinder') {
                         this.updateIframeParams({ [param.id]: value });
-                    } else if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
-                        this.currentShape.handleControl(param.id, value);
+                    } else {
+                        // Update local shape using handleControl
+                        if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
+                            this.currentShape.handleControl(param.id, value);
+                        }
                     }
                     this.updateStats();
                 });
             }
         });
 
+        // Also handle unfold slider for cylinder
         if (shapeType === 'cylinder') {
             const unfoldSlider = document.getElementById('control-unfold');
             if (unfoldSlider) {
@@ -461,6 +488,220 @@ class App {
                 break;
             case 'cylinder':
                 this.currentShape = new CylinderShape(this.scene);
+                break;
+            case 'triangle':
+                this.currentShape = new TriangleShape(this.scene);
+                break;
+            case 'rectangle':
+                this.currentShape = new RectangleShape(this.scene);
+                break;
+            case 'circle':
+                this.currentShape = new CircleShape(this.scene);
+                break;
+            case 'trapezoid':
+                this.currentShape = new TrapezoidShape(this.scene);
+                break;
+        }
+        const shapeName = shapeNames[shapeType] || 'HÌNH 3D';
+
+        const nameBox = document.getElementById('current-shape-name');
+        if (nameBox) nameBox.textContent = shapeName;
+
+        const nameOverlay = document.getElementById('shape-name-overlay');
+        if (nameOverlay) nameOverlay.textContent = shapeName;
+
+        // Handle iframe for cylinder (hinhtru3d) - keep sidebar visible!
+        const iframe = document.getElementById('hinhtru3d-iframe');
+        const canvas = document.getElementById('canvas3d');
+        const canvasOverlays = document.querySelectorAll('.shape-name-overlay, .canvas-actions, .canvas-hint');
+
+        if (shapeType === 'cylinder') {
+            // Show hinhtru3d iframe, hide main canvas but KEEP SIDEBAR
+            iframe?.classList.remove('hidden');
+            if (canvas) canvas.style.display = 'none';
+            canvasOverlays.forEach(el => el.style.display = 'none');
+
+            // Dispose current shape
+            if (this.currentShape) {
+                this.currentShape.dispose();
+                this.currentShape = null;
+            }
+
+            // Tell iframe to hide its own control panel
+            this.sendToIframe({ type: 'HIDE_CONTROL_PANEL' });
+        } else {
+            // Hide iframe, show canvas
+            iframe?.classList.add('hidden');
+            if (canvas) canvas.style.display = 'block';
+            canvasOverlays.forEach(el => el.style.display = '');
+
+            // Load new shape
+            this.loadShape(shapeType);
+        }
+
+        // Render dynamic parameters for this shape (always)
+        this.renderDynamicParams(shapeType);
+
+        this.updateLessonContent();
+    }
+
+    // Send message to hinhtru3d iframe
+    sendToIframe(message) {
+        const iframe = document.getElementById('hinhtru3d-iframe');
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage(message, '*');
+        }
+    }
+
+    // Update hinhtru3d iframe with new parameters
+    updateIframeParams(params) {
+        this.sendToIframe({
+            type: 'UPDATE_PARAMS',
+            ...params
+        });
+    }
+
+    renderDynamicParams(shapeType) {
+        const container = document.getElementById('dynamic-params-container');
+        if (!container) return;
+
+        // Define shape parameters
+        const SHAPE_PARAMS = {
+            'cube': [
+                { id: 'size', label: '📏 CẠNH (a)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' }
+            ],
+            'rectangular-prism': [
+                { id: 'width', label: '📏 DÀI (a)', min: 1, max: 6, step: 0.5, default: 4, unit: 'cm' },
+                { id: 'height', label: '📐 RỘNG (b)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' },
+                { id: 'depth', label: '📏 CAO (c)', min: 1, max: 6, step: 0.5, default: 2, unit: 'cm' }
+            ],
+            'pyramid': [
+                { id: 'base', label: '📏 CẠNH ĐÁY (a)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' },
+                { id: 'height', label: '📐 CHIỀU CAO (h)', min: 1, max: 8, step: 0.5, default: 4, unit: 'cm' }
+            ],
+            'sphere': [
+                { id: 'radius', label: '📏 BÁN KÍNH (r)', min: 1, max: 5, step: 0.5, default: 2, unit: 'cm' }
+            ],
+            'cylinder': [
+                { id: 'radius', label: '📏 BÁN KÍNH (r)', min: 1, max: 5, step: 0.5, default: 2, unit: 'cm' },
+                { id: 'height', label: '📐 CHIỀU CAO (h)', min: 2, max: 8, step: 0.5, default: 4, unit: 'cm' }
+            ],
+            'triangle': [
+                { id: 'side', label: '📏 CẠNH (a)', min: 1, max: 8, step: 0.5, default: 4, unit: 'cm' }
+            ],
+            'rectangle': [
+                { id: 'width', label: '📏 DÀI (w)', min: 1, max: 8, step: 0.5, default: 5, unit: 'cm' },
+                { id: 'height', label: '📐 RỘNG (h)', min: 1, max: 8, step: 0.5, default: 3, unit: 'cm' }
+            ],
+            'circle': [
+                { id: 'radius', label: '📏 BÁN KÍNH (r)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' }
+            ],
+            'trapezoid': [
+                { id: 'topBase', label: '📏 ĐÁY NHỎ (a)', min: 1, max: 5, step: 0.5, default: 2, unit: 'cm' },
+                { id: 'bottomBase', label: '📏 ĐÁY LỚN (b)', min: 2, max: 8, step: 0.5, default: 5, unit: 'cm' },
+                { id: 'height', label: '📐 CHIỀU CAO (h)', min: 1, max: 6, step: 0.5, default: 3, unit: 'cm' }
+            ]
+        };
+
+        const params = SHAPE_PARAMS[shapeType] || [];
+
+        container.innerHTML = params.map(param => `
+            <div class="slider-container">
+                <div class="slider-header">
+                    <label class="slider-label">${param.label}</label>
+                    <span class="slider-value" id="value-${param.id}">${param.default} ${param.unit}</span>
+                </div>
+                <input type="range" class="slider-range" id="control-${param.id}" 
+                       min="${param.min}" max="${param.max}" step="${param.step}" value="${param.default}">
+                <div class="slider-bounds">
+                    <span>${param.min}${param.unit}</span>
+                    <span>${param.max}${param.unit}</span>
+                </div>
+            </div>
+        `).join('');
+
+        // Store current shape type for reference
+        this.currentShapeType = shapeType;
+
+        // Add event listeners for dynamic sliders
+        params.forEach(param => {
+            const slider = document.getElementById(`control-${param.id}`);
+            const valueDisplay = document.getElementById(`value-${param.id}`);
+            if (slider && valueDisplay) {
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    valueDisplay.textContent = `${value} ${param.unit}`;
+
+                    // For cylinder - send to iframe
+                    if (this.currentShapeType === 'cylinder') {
+                        this.updateIframeParams({ [param.id]: value });
+                    } else {
+                        // Update local shape using handleControl
+                        if (this.currentShape && typeof this.currentShape.handleControl === 'function') {
+                            this.currentShape.handleControl(param.id, value);
+                        }
+                    }
+                    this.updateStats();
+                });
+            }
+        });
+
+        // Also handle unfold slider for cylinder
+        if (shapeType === 'cylinder') {
+            const unfoldSlider = document.getElementById('control-unfold');
+            if (unfoldSlider) {
+                unfoldSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.updateIframeParams({ unfoldProgress: value });
+                });
+            }
+
+            const opacitySlider = document.getElementById('control-opacity');
+            if (opacitySlider) {
+                opacitySlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.updateIframeParams({ opacity: value });
+                });
+            }
+        }
+    }
+
+    loadShape(shapeType) {
+        // Dispose current shape
+        if (this.currentShape) {
+            this.currentShape.dispose();
+        }
+
+        this.currentShapeType = shapeType;
+
+        // Create new shape
+        switch (shapeType) {
+            case 'cube':
+                this.currentShape = new CubeShape(this.scene);
+                break;
+            case 'rectangular-prism':
+                this.currentShape = new RectangularPrismShape(this.scene);
+                break;
+            case 'pyramid':
+                this.currentShape = new PyramidShape(this.scene);
+                break;
+            case 'sphere':
+                this.currentShape = new SphereShape(this.scene);
+                break;
+            case 'cylinder':
+                this.currentShape = new CylinderShape(this.scene);
+                break;
+            case 'triangle':
+                this.currentShape = new TriangleShape(this.scene);
+                break;
+            case 'rectangle':
+                this.currentShape = new RectangleShape(this.scene);
+                break;
+            case 'circle':
+                this.currentShape = new CircleShape(this.scene);
+                break;
+            case 'trapezoid':
+                this.currentShape = new TrapezoidShape(this.scene);
                 break;
         }
 

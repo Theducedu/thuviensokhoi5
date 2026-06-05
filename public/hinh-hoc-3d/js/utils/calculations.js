@@ -52,6 +52,35 @@ const Calculations = {
         faces: 3     // 2 đáy + 1 mặt bên
     },
 
+    // 2D Shapes (Hình phẳng)
+
+    // Hình tam giác (Đều)
+    triangle: {
+        area: (a) => (Math.sqrt(3) / 4) * Math.pow(a, 2),
+        perimeter: (a) => 3 * a
+    },
+
+    // Hình chữ nhật
+    rectangle: {
+        area: (w, h) => w * h,
+        perimeter: (w, h) => 2 * (w + h)
+    },
+
+    // Hình tròn
+    circle: {
+        area: (r) => Math.PI * Math.pow(r, 2),
+        perimeter: (r) => 2 * Math.PI * r // Chu vi
+    },
+
+    // Hình thang (Cân)
+    trapezoid: {
+        area: (a, b, h) => ((a + b) / 2) * h,
+        perimeter: (a, b, h) => {
+            const slant = Math.sqrt(Math.pow(h, 2) + Math.pow(Math.abs(a - b) / 2, 2));
+            return a + b + 2 * slant;
+        }
+    },
+
     // Format số
     formatNumber: (num, decimals = 2) => {
         if (num === 0) return '0';
