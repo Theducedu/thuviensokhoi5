@@ -1922,13 +1922,16 @@ Chi tiết: ${errorMessage(error)}`);
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div className="brand-row">
+        <div className="brand-row sidebar-brand">
           <div className="brand-mark">
             <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
           </div>
-          <div>
-            <strong>Thư viện số Khối 5</strong>
-            <span>Nguyễn Đình Chiểu</span>
+          <div className="brand-copy">
+            <strong className="brand-title" aria-label="Thư viện số Khối 5">
+              <span className="brand-title-main">Thư viện số</span>
+              <span className="brand-title-grade">Khối 5</span>
+            </strong>
+            <span className="brand-subtitle">Nguyễn Đình Chiểu</span>
           </div>
         </div>
         <nav>

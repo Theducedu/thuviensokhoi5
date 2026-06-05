@@ -189,6 +189,16 @@ button {
   gap: 12px;
 }
 
+.sidebar-brand {
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.brand-copy {
+  min-width: 0;
+  padding-top: 1px;
+}
+
 .brand-row strong,
 .user-card strong {
   display: block;
@@ -196,11 +206,50 @@ button {
   font-size: 1rem;
 }
 
+.sidebar-brand .brand-title {
+  color: #17211f;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.brand-title-main,
+.brand-title-grade {
+  display: block;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.brand-title-main {
+  margin-bottom: 3px;
+  color: #21312e;
+  font-size: 1.02rem;
+  text-shadow: 0 1px 0 #ffffff;
+}
+
+.brand-title-grade {
+  width: fit-content;
+  color: #08735f;
+  font-size: 1.74rem;
+  text-transform: uppercase;
+  text-shadow:
+    0 1px 0 #dff6ee,
+    0 2px 0 #bde7db,
+    0 3px 0 #84cbb8,
+    0 8px 18px rgba(6, 92, 76, 0.24);
+}
+
 .brand-row span,
 .user-card span {
   display: block;
   color: #62716e;
   font-size: 0.82rem;
+}
+
+.sidebar-brand .brand-subtitle {
+  margin-top: 4px;
+  color: #52645f;
+  font-weight: 650;
+  line-height: 1.15;
 }
 
 .brand-mark {
@@ -1743,6 +1792,23 @@ td span {
     backdrop-filter: blur(8px);
   }
 
+  .sidebar-brand {
+    align-items: center;
+  }
+
+  .brand-title-main {
+    margin-bottom: 2px;
+    font-size: 0.94rem;
+  }
+
+  .brand-title-grade {
+    font-size: 1.28rem;
+    text-shadow:
+      0 1px 0 #dff6ee,
+      0 2px 0 #a9ddcf,
+      0 6px 14px rgba(6, 92, 76, 0.18);
+  }
+
   .sidebar nav {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     overflow-x: auto;
@@ -1807,6 +1873,14 @@ td span {
 @media (max-width: 480px) {
   .brand-row strong {
     font-size: 0.92rem;
+  }
+
+  .brand-title-main {
+    font-size: 0.86rem;
+  }
+
+  .brand-title-grade {
+    font-size: 1.12rem;
   }
 
   .brand-row span {
