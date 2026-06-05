@@ -24,6 +24,7 @@
   Users,
   X,
   XCircle,
+  Youtube,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -41,7 +42,7 @@ import { currentGoogleEmail, db, getGoogleRedirectUser, isFirebaseAuthReady, sig
 import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 
 type Role = "viewer" | "teacher" | "admin";
-type View = "dashboard" | "resources" | "news" | "contribute" | "guides" | "digital" | "admin";
+type View = "help" | "dashboard" | "resources" | "news" | "contribute" | "guides" | "digital" | "admin";
 type ResourceStatus = "approved" | "pending" | "rejected";
 type ResourceType = "lesson" | "ppt" | "ebook";
 
@@ -177,6 +178,8 @@ const deletedDefaultsStorageKey = "khoi5-deleted-defaults";
 const primaryAdminEmail = "nguyenduc91ltk@gmail.com";
 const defaultGuideThumbnail =
   "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80";
+const instructionVideoUrl = "https://youtu.be/_DMVHRe_JQQ";
+const instructionVideoEmbedUrl = "https://www.youtube.com/embed/_DMVHRe_JQQ";
 
 function getYouTubeVideoId(url: string) {
   if (!url.trim()) return "";
@@ -226,7 +229,7 @@ function isEmbeddedBrowser() {
 }
 
 function isView(value: string | null): value is View {
-  return value === "dashboard" || value === "resources" || value === "news" || value === "contribute" || value === "guides" || value === "digital" || value === "admin";
+  return value === "help" || value === "dashboard" || value === "resources" || value === "news" || value === "contribute" || value === "guides" || value === "digital" || value === "admin";
 }
 
 function errorCode(error: unknown) {
@@ -1909,7 +1912,8 @@ Chi tiết: ${errorMessage(error)}`);
     }
   };
 
-  const navItems: Array<{ id: View; label: string; icon: typeof Gauge; adminOnly?: boolean }> = [
+  const navItems: Array<{ id: View; label: string; icon: typeof Gauge; adminOnly?: boolean; publicAccess?: boolean; variant?: "youtube" }> = [
+    { id: "help", label: "Xem HD sử dụng", icon: Youtube, publicAccess: true, variant: "youtube" },
     { id: "dashboard", label: "Tổng quan", icon: Gauge },
     { id: "resources", label: "Thư viện", icon: Library },
     { id: "news", label: "Ảnh hoạt động", icon: Megaphone },
@@ -1942,9 +1946,9 @@ Chi tiết: ${errorMessage(error)}`);
               return (
                 <button
                   key={item.id}
-                  className={view === item.id ? "active" : ""}
+                  className={`${view === item.id ? "active" : ""} ${item.variant === "youtube" ? "youtube-nav" : ""}`.trim()}
                   onClick={() => {
-                    if (!requireGoogleAccess(item.id)) return;
+                    if (!item.publicAccess && !requireGoogleAccess(item.id)) return;
                     if (item.id === "contribute" && !requireStaffAccess("contribute")) return;
                     setView(item.id);
                   }}
@@ -1986,6 +1990,7 @@ Chi tiết: ${errorMessage(error)}`);
           <div>
             <span className="eyebrow">Năm học 2026-2027</span>
             <h2>
+              {view === "help" && "Hướng dẫn sử dụng"}
               {view === "dashboard" && "Tổng quan thư viện"}
               {view === "resources" && "Kho tài liệu"}
               {view === "news" && "Ảnh hoạt động"}
@@ -2008,6 +2013,36 @@ Chi tiết: ${errorMessage(error)}`);
             )}
           </div>
         </header>
+
+        {view === "help" && (
+          <section className="help-video-page">
+            <article className="guide-featured-video help-video-card">
+              <iframe
+                className="guide-local-video"
+                src={instructionVideoEmbedUrl}
+                title="Video hướng dẫn sử dụng thư viện số"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+              <div className="guide-card-head">
+                <span className="guide-icon video-icon">
+                  <Youtube size={22} />
+                </span>
+                <div>
+                  <strong>Video hướng dẫn sử dụng thư viện số</strong>
+                  <span>Giáo viên xem nhanh trước khi khai thác tài liệu</span>
+                </div>
+              </div>
+              <div className="card-footer">
+                <span>Nhúng từ YouTube</span>
+                <button className="text-button" onClick={() => window.open(instructionVideoUrl, "_blank", "noopener,noreferrer")}>
+                  Xem trên YouTube
+                  <ExternalLink size={16} />
+                </button>
+              </div>
+            </article>
+          </section>
+        )}
 
         {view === "dashboard" && (
           <div className="page-stack">
@@ -2362,6 +2397,33 @@ Chi tiết: ${errorMessage(error)}`);
             )}
 
             <div className="guide-list">
+              <article className="guide-featured-video">
+                <iframe
+                  className="guide-local-video"
+                  src={instructionVideoEmbedUrl}
+                  title="Video hướng dẫn sử dụng thư viện số"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+                <div className="guide-card-head">
+                  <span className="guide-icon video-icon">
+                    <Youtube size={20} />
+                  </span>
+                  <div>
+                    <strong>Video hướng dẫn sử dụng thư viện số</strong>
+                    <span>Dành cho giáo viên Khối 5</span>
+                  </div>
+                </div>
+                <div className="card-footer">
+                  <span>Video nội bộ, xem trực tiếp trên web</span>
+                  <div className="review-actions">
+                    <button className="text-button" onClick={() => window.open(instructionVideoUrl, "_blank", "noopener,noreferrer")}>
+                      Mở tab riêng
+                      <ExternalLink size={16} />
+                    </button>
+                  </div>
+                </div>
+              </article>
               {data.guides.length === 0 ? (
                 <EmptyState title="Chưa có bài cẩm nang" text="Các bài chia sẻ CNTT-AI sẽ xuất hiện tại đây." />
               ) : (

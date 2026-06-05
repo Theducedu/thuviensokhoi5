@@ -468,6 +468,16 @@ textarea:focus {
   color: #0f6d58;
 }
 
+.sidebar nav button.youtube-nav {
+  color: #d01818;
+}
+
+.sidebar nav button.youtube-nav.active,
+.sidebar nav button.youtube-nav:hover {
+  background: #fff0f0;
+  color: #c20000;
+}
+
 .sidebar nav button:hover {
   transform: translateX(4px);
   box-shadow: 0 8px 20px rgba(15, 109, 88, 0.08);
@@ -810,6 +820,15 @@ textarea:focus {
 .dashboard-side {
   display: grid;
   gap: 16px;
+}
+
+.guide-local-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 8px;
+  background: #10263d;
 }
 
 .subject-focus {
@@ -1324,6 +1343,35 @@ textarea:focus {
   gap: 14px;
 }
 
+.help-video-page {
+  max-width: 960px;
+}
+
+.help-video-card {
+  background:
+    linear-gradient(135deg, rgba(255, 240, 240, 0.86), rgba(255, 255, 255, 0.94)),
+    #ffffff;
+}
+
+.guide-featured-video {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #cfdeda;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+  box-shadow: 0 16px 38px rgba(28, 45, 40, 0.08);
+}
+
+.guide-local-video {
+  box-shadow: 0 16px 36px rgba(18, 38, 61, 0.15);
+}
+
+.video-icon {
+  background: #fff0f0;
+  color: #d01818;
+}
+
 .digital-content {
   display: grid;
   gap: 14px;
@@ -1807,7 +1855,7 @@ td span {
   }
 
   .sidebar nav {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
     overflow-x: auto;
     gap: 6px;
   }
