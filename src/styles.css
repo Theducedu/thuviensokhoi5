@@ -224,34 +224,23 @@ button {
 }
 
 .brand-title-main {
-  color: #40524d;
-  font-size: 0.82rem;
+  color: #3e514d;
+  font-size: 0.86rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .brand-title-grade {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   width: fit-content;
-  min-height: 32px;
-  padding: 2px 10px 5px;
-  border: 1px solid rgba(255, 255, 255, 0.54);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 38%),
-    linear-gradient(135deg, #0f8f77 0%, #086a60 52%, #0b4f79 100%);
-  color: #ffffff;
-  font-size: 1.52rem;
+  color: #08735f;
+  font-size: 1.58rem;
   font-weight: 950;
+  line-height: 0.96;
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.32),
-    0 2px 7px rgba(0, 0, 0, 0.18);
-  box-shadow:
-    inset 0 -3px 0 rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 8px 18px rgba(6, 92, 76, 0.2);
+    0 1px 0 #d8f1e8,
+    0 2px 0 #a7d7ca,
+    0 5px 12px rgba(6, 92, 76, 0.18);
 }
 
 .brand-row span,
@@ -1813,14 +1802,11 @@ td span {
   }
 
   .brand-title-main {
-    font-size: 0.74rem;
+    font-size: 0.76rem;
   }
 
   .brand-title-grade {
-    min-height: 28px;
-    padding: 2px 8px 4px;
-    border-radius: 7px;
-    font-size: 1.16rem;
+    font-size: 1.24rem;
   }
 
   .sidebar nav {
@@ -1894,9 +1880,7 @@ td span {
   }
 
   .brand-title-grade {
-    min-height: 26px;
-    padding: 2px 7px 4px;
-    font-size: 1.02rem;
+    font-size: 1.12rem;
   }
 
   .brand-row span {
