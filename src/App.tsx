@@ -126,6 +126,12 @@ type AppData = {
   visits: number;
 };
 
+type SiteStats = {
+  visits: number;
+  activeUsers: number;
+  loginAccounts: number;
+};
+
 type ContentKind = "resources" | "news" | "guides" | "digitalApps";
 
 type CurrentUser = {
@@ -234,7 +240,7 @@ function errorMessage(error: unknown) {
 const today = new Date().toISOString();
 
 const seedData: AppData = {
-  visits: 1286,
+  visits: 0,
   loginStats: [],
   teachers: [
     {
@@ -771,6 +777,11 @@ export default function App() {
   const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
   const [editingDigitalAppId, setEditingDigitalAppId] = useState<string | null>(null);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
+  const [siteStats, setSiteStats] = useState<SiteStats>({
+    visits: data.visits,
+    activeUsers: data.teachers.filter((teacher) => teacher.active).length,
+    loginAccounts: data.loginStats.length,
+  });
 
   useHoverSound(true);
 
@@ -791,6 +802,20 @@ export default function App() {
   const approvedResources = data.resources.filter((item) => item.status === "approved");
   const pendingResources = data.resources.filter((item) => item.status === "pending");
   const visibleNews = data.news.filter((item) => item.visible);
+
+  const refreshSiteStats = async () => {
+    if (!db) return;
+
+    const snapshot = await getDoc(doc(db, "siteStats", "summary"));
+    if (!snapshot.exists()) return;
+
+    const item = snapshot.data();
+    setSiteStats({
+      visits: Number(item.visits || 0),
+      activeUsers: Number(item.activeUsers || 0),
+      loginAccounts: Number(item.loginAccounts || 0),
+    });
+  };
 
   const refreshRemoteAccessData = async () => {
     if (!db) return;
@@ -813,7 +838,7 @@ export default function App() {
       } satisfies Teacher;
     });
 
-    const remoteStats = loginDocs.docs.map((snapshot) => {
+    const remoteLoginStats = loginDocs.docs.map((snapshot) => {
       const item = snapshot.data();
       return {
         email: String(item.email || snapshot.id).toLowerCase(),
@@ -824,11 +849,31 @@ export default function App() {
         lastLoginAt: toIsoDate(item.lastLoginAt),
       } satisfies LoginStat;
     });
+    const nextSiteStats: SiteStats = {
+      visits: siteStats.visits,
+      activeUsers: remoteTeachers.filter((teacher) => teacher.active).length,
+      loginAccounts: remoteLoginStats.length,
+    };
+
+    await setDoc(
+      doc(db, "siteStats", "summary"),
+      {
+        activeUsers: nextSiteStats.activeUsers,
+        loginAccounts: nextSiteStats.loginAccounts,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    setSiteStats((current) => ({
+      ...current,
+      activeUsers: nextSiteStats.activeUsers,
+      loginAccounts: nextSiteStats.loginAccounts,
+    }));
 
     updateAndSaveData((current) => ({
       ...current,
       teachers: remoteTeachers.length ? remoteTeachers : current.teachers,
-      loginStats: remoteStats,
+      loginStats: remoteLoginStats,
     }));
   };
 
@@ -863,8 +908,11 @@ export default function App() {
   const recordRemoteLogin = async (nextUser: CurrentUser) => {
     if (!db) return;
 
+    const loginRef = doc(db, "loginStats", emailDocId(nextUser.email));
+    const existingLogin = await getDoc(loginRef).catch(() => null);
+
     await setDoc(
-      doc(db, "loginStats", emailDocId(nextUser.email)),
+      loginRef,
       {
         email: nextUser.email.toLowerCase(),
         name: nextUser.name,
@@ -875,6 +923,17 @@ export default function App() {
       },
       { merge: true },
     );
+
+    await setDoc(
+      doc(db, "siteStats", "summary"),
+      {
+        visits: increment(1),
+        loginAccounts: existingLogin?.exists() ? increment(0) : increment(1),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    await refreshSiteStats();
   };
 
   const refreshRemoteContentData = async () => {
@@ -986,6 +1045,13 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+    void refreshSiteStats().catch(() => {
+      setLoginError("");
+    });
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (!user) return;
     void refreshRemoteContentData().catch(() => {
       setLoginError("");
     });
@@ -1021,11 +1087,11 @@ export default function App() {
   const stats = useMemo(() => {
     const opens = data.resources.reduce((sum, item) => sum + item.opens, 0);
     return {
-      visits: data.visits,
+      visits: siteStats.visits,
       resources: approvedResources.length,
       pending: pendingResources.length,
-      teachers: data.teachers.filter((teacher) => teacher.active).length,
-      loginAccounts: data.loginStats.length,
+      teachers: siteStats.activeUsers || data.teachers.filter((teacher) => teacher.active).length,
+      loginAccounts: siteStats.loginAccounts || data.loginStats.length,
       opens,
     };
   }, [
@@ -1033,8 +1099,10 @@ export default function App() {
     data.loginStats.length,
     data.resources,
     data.teachers,
-    data.visits,
     pendingResources.length,
+    siteStats.activeUsers,
+    siteStats.loginAccounts,
+    siteStats.visits,
   ]);
 
   const ebookResources = approvedResources.filter(isEbookResource);

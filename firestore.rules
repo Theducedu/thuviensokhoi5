@@ -26,8 +26,14 @@ service cloud.firestore {
     }
 
     match /loginStats/{email} {
-      allow read: if isAdmin();
+      allow read: if isAdmin() || isOwnLoginStat(email);
       allow create, update: if isOwnLoginStat(email);
+      allow delete: if isAdmin();
+    }
+
+    match /siteStats/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && id == "summary";
       allow delete: if isAdmin();
     }
 
