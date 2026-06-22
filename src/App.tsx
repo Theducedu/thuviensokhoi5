@@ -39,7 +39,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { currentGoogleEmail, db, getGoogleRedirectUser, isFirebaseAuthReady, signInWithGoogle, signInWithGoogleRedirect, signOutGoogle } from "./firebase";
-import schoolLogo from "./assets/logo-nguyen-dinh-chieu.png";
 
 type Role = "viewer" | "teacher" | "admin";
 type View = "help" | "dashboard" | "resources" | "news" | "contribute" | "guides" | "digital" | "admin";
@@ -1932,14 +1931,14 @@ Chi tiết: ${errorMessage(error)}`);
       <aside className="sidebar">
         <div className="brand-row sidebar-brand">
           <div className="brand-mark">
-            <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
+            <Library size={24} aria-hidden="true" />
           </div>
           <div className="brand-copy">
             <strong className="brand-title" aria-label="Thư viện số Khối 5">
               <span className="brand-title-main">Thư viện số</span>
               <span className="brand-title-grade">Khối 5</span>
             </strong>
-            <span className="brand-subtitle">Nguyễn Đình Chiểu</span>
+            <span className="brand-subtitle">Kho học liệu mở</span>
           </div>
         </div>
         <nav>
@@ -2051,7 +2050,7 @@ Chi tiết: ${errorMessage(error)}`);
         {view === "dashboard" && (
           <div className="page-stack">
             <section className="visual-hero cover-hero" aria-label="Bìa thư viện số Khối 5">
-              <img src="/banner-dashboard.jpg" alt="Thư viện số Khối 5 - TH Nguyễn Đình Chiểu" />
+              <img src="/banner-dashboard.jpg" alt="Thư viện số Khối 5" />
             </section>
 
             <section className="dashboard-stats-strip">
@@ -3087,7 +3086,7 @@ Chi tiết: ${errorMessage(error)}`);
           <section className="auth-modal">
             <div className="brand-row">
               <div className="brand-mark">
-                <img src={schoolLogo} alt="Logo Trường Tiểu học Nguyễn Đình Chiểu" />
+                <Library size={24} aria-hidden="true" />
               </div>
               <div>
                 <strong>{user ? "Chưa được cấp quyền tải" : "Đăng nhập Google"}</strong>
