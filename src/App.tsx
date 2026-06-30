@@ -152,8 +152,8 @@ type AccessNotificationDraft = {
 
 type BulkAccessResult = {
   added: number;
-  updated: number;
   skipped: number;
+  duplicateEmails: string[];
   invalidLines: string[];
 };
 
@@ -660,9 +660,16 @@ function cleanBulkNamePart(value: string) {
 
 function parseBulkTeachers(raw: string, subject: string, role: Role, existingTeachers: Teacher[]) {
   const seenEmails = new Set<string>();
+  const existingEmails = new Set(existingTeachers.map((teacher) => teacher.email.toLowerCase()));
   const invalidLines: string[] = [];
+  const duplicateEmails: string[] = [];
   const teachers: Teacher[] = [];
   let skipped = 0;
+
+  const markDuplicate = (email: string) => {
+    skipped += 1;
+    if (!duplicateEmails.includes(email)) duplicateEmails.push(email);
+  };
 
   raw
     .split(/\r?\n/)
@@ -676,29 +683,33 @@ function parseBulkTeachers(raw: string, subject: string, role: Role, existingTea
       }
 
       const email = match[0].toLowerCase();
+      if (existingEmails.has(email)) {
+        markDuplicate(email);
+        return;
+      }
+
       if (seenEmails.has(email)) {
-        skipped += 1;
+        markDuplicate(email);
         return;
       }
       seenEmails.add(email);
 
-      const existingTeacher = existingTeachers.find((teacher) => teacher.email.toLowerCase() === email);
       const beforeEmail = cleanBulkNamePart(line.slice(0, match.index));
       const afterEmail = cleanBulkNamePart(line.slice(match.index + match[0].length));
-      const name = beforeEmail || afterEmail || existingTeacher?.name || email.split("@")[0];
+      const name = beforeEmail || afterEmail || email.split("@")[0];
 
       teachers.push({
-        id: existingTeacher?.id ?? createId("t"),
+        id: createId("t"),
         name,
         email,
-        subject: subject || existingTeacher?.subject || allSubjectsLabel,
+        subject: subject || allSubjectsLabel,
         code: "",
         role,
         active: true,
       });
     });
 
-  return { teachers, invalidLines, skipped };
+  return { teachers, invalidLines, duplicateEmails, skipped };
 }
 
 function buildAccessNotificationDraft(mode: AccessNotificationDraft["mode"], teachers: Teacher[]): AccessNotificationDraft {
@@ -1624,8 +1635,20 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     const role = form.get("role") as Role;
     const email = String(form.get("email") || "").trim().toLowerCase();
     const existingTeacher = data.teachers.find((teacher) => teacher.email.toLowerCase() === email);
+    if (existingTeacher) {
+      setBulkAccessResult({
+        added: 0,
+        skipped: 1,
+        duplicateEmails: [email],
+        invalidLines: [],
+      });
+      setAccessNotificationDraft(null);
+      window.alert(`Email ${email} đã được thêm trước đó, nên hệ thống không thêm lại.`);
+      return;
+    }
+
     const next: Teacher = {
-      id: existingTeacher?.id ?? createId("t"),
+      id: createId("t"),
       name: String(form.get("name") || ""),
       email,
       subject: String(form.get("subject") || allSubjectsLabel),
@@ -1636,9 +1659,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
 
     setAndSaveData({
       ...data,
-      teachers: existingTeacher
-        ? data.teachers.map((teacher) => (teacher.id === existingTeacher.id ? next : teacher))
-        : [next, ...data.teachers],
+      teachers: [next, ...data.teachers],
     });
 
     if (db) {
@@ -1669,17 +1690,13 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
     if (parsed.teachers.length === 0) {
       setBulkAccessResult({
         added: 0,
-        updated: 0,
         skipped: parsed.skipped,
+        duplicateEmails: parsed.duplicateEmails,
         invalidLines: parsed.invalidLines,
       });
+      setAccessNotificationDraft(null);
       return;
     }
-
-    const existingEmails = new Set(data.teachers.map((teacher) => teacher.email.toLowerCase()));
-    const importedByEmail = new Map(parsed.teachers.map((teacher) => [teacher.email.toLowerCase(), teacher]));
-    const newTeachers = parsed.teachers.filter((teacher) => !existingEmails.has(teacher.email.toLowerCase()));
-    const updatedTeachers = data.teachers.map((teacher) => importedByEmail.get(teacher.email.toLowerCase()) ?? teacher);
 
     const firestore = db;
     if (firestore) {
@@ -1699,12 +1716,12 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
 
     setAndSaveData({
       ...data,
-      teachers: [...newTeachers, ...updatedTeachers],
+      teachers: [...parsed.teachers, ...data.teachers],
     });
     setBulkAccessResult({
-      added: newTeachers.length,
-      updated: parsed.teachers.length - newTeachers.length,
+      added: parsed.teachers.length,
       skipped: parsed.skipped,
+      duplicateEmails: parsed.duplicateEmails,
       invalidLines: parsed.invalidLines,
     });
     setAccessNotificationDraft(buildAccessNotificationDraft("granted", parsed.teachers));
@@ -3045,8 +3062,11 @@ leminhc@gmail.com, Lê Minh C`}
                     </button>
                   </form>
                   {bulkAccessResult && (
-                    <div className={`auth-note ${bulkAccessResult.invalidLines.length > 0 ? "" : "success"}`}>
-                      Đã thêm {bulkAccessResult.added}, cập nhật {bulkAccessResult.updated}, bỏ qua trùng trong danh sách {bulkAccessResult.skipped}.
+                    <div className={`auth-note ${bulkAccessResult.invalidLines.length > 0 || bulkAccessResult.duplicateEmails.length > 0 ? "" : "success"}`}>
+                      Đã thêm {bulkAccessResult.added}, bỏ qua {bulkAccessResult.skipped} email đã có hoặc bị lặp trong danh sách.
+                      {bulkAccessResult.duplicateEmails.length > 0 && (
+                        <span> Email đã thêm rồi: {bulkAccessResult.duplicateEmails.slice(0, 8).join(", ")}</span>
+                      )}
                       {bulkAccessResult.invalidLines.length > 0 && (
                         <span> Dòng chưa đọc được email: {bulkAccessResult.invalidLines.slice(0, 3).join(" | ")}</span>
                       )}
