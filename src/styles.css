@@ -1542,6 +1542,36 @@ textarea:focus {
   min-width: 0;
 }
 
+.bulk-access-block {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e5ecea;
+}
+
+.access-notice-draft {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  border: 1px solid #d8e8e2;
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 14px;
+}
+
+.access-notice-draft p {
+  margin: 0;
+  color: #556560;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.access-notice-draft textarea {
+  min-height: 76px;
+  background: #ffffff;
+}
+
 .admin-list {
   display: grid;
   gap: 10px;

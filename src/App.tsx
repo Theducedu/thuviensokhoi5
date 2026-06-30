@@ -3,6 +3,7 @@
   CheckCircle2,
   Chrome,
   ClipboardList,
+  Copy,
   ExternalLink,
   FileText,
   Gauge,
@@ -11,6 +12,7 @@
   ImagePlus,
   Library,
   LogOut,
+  Mail,
   Maximize2,
   Megaphone,
   Pencil,
@@ -139,6 +141,20 @@ type CurrentUser = {
   email: string;
   role: Role;
   subject: string;
+};
+
+type AccessNotificationDraft = {
+  mode: "granted" | "revoked";
+  recipients: string[];
+  subject: string;
+  body: string;
+};
+
+type BulkAccessResult = {
+  added: number;
+  updated: number;
+  skipped: number;
+  invalidLines: string[];
 };
 
 const scheduleSubjectLabel = "Lịch báo giảng";
@@ -631,6 +647,89 @@ function emailDocId(email: string) {
   return email.trim().toLowerCase();
 }
 
+const emailPattern = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+function cleanBulkNamePart(value: string) {
+  return value
+    .replace(emailPattern, "")
+    .replace(/[<>()"']/g, " ")
+    .replace(/[,;\t|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseBulkTeachers(raw: string, subject: string, role: Role, existingTeachers: Teacher[]) {
+  const seenEmails = new Set<string>();
+  const invalidLines: string[] = [];
+  const teachers: Teacher[] = [];
+  let skipped = 0;
+
+  raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const match = line.match(emailPattern);
+      if (!match || match.index === undefined) {
+        invalidLines.push(line);
+        return;
+      }
+
+      const email = match[0].toLowerCase();
+      if (seenEmails.has(email)) {
+        skipped += 1;
+        return;
+      }
+      seenEmails.add(email);
+
+      const existingTeacher = existingTeachers.find((teacher) => teacher.email.toLowerCase() === email);
+      const beforeEmail = cleanBulkNamePart(line.slice(0, match.index));
+      const afterEmail = cleanBulkNamePart(line.slice(match.index + match[0].length));
+      const name = beforeEmail || afterEmail || existingTeacher?.name || email.split("@")[0];
+
+      teachers.push({
+        id: existingTeacher?.id ?? createId("t"),
+        name,
+        email,
+        subject: subject || existingTeacher?.subject || allSubjectsLabel,
+        code: "",
+        role,
+        active: true,
+      });
+    });
+
+  return { teachers, invalidLines, skipped };
+}
+
+function buildAccessNotificationDraft(mode: AccessNotificationDraft["mode"], teachers: Teacher[]): AccessNotificationDraft {
+  const recipients = teachers.map((teacher) => teacher.email);
+  const subject =
+    mode === "granted"
+      ? "Thông báo cấp quyền truy cập Thư viện số Khối 5"
+      : "Thông báo thu hồi quyền truy cập Thư viện số Khối 5";
+  const body =
+    mode === "granted"
+      ? `Thầy cô đã được cấp quyền truy cập Thư viện số Khối 5.
+
+Vui lòng đăng nhập bằng đúng tài khoản Gmail được cấp quyền để tải tài liệu và đóng góp tài liệu vào thư viện.`
+      : `Quyền truy cập Thư viện số Khối 5 của tài khoản này đã được thu hồi.
+
+Nếu thầy cô cần mở lại quyền truy cập, vui lòng liên hệ quản trị viên.`;
+
+  return { mode, recipients, subject, body };
+}
+
+function gmailComposeUrl(draft: AccessNotificationDraft) {
+  const params = new URLSearchParams({
+    view: "cm",
+    fs: "1",
+    to: draft.recipients.join(","),
+    su: draft.subject,
+    body: draft.body,
+  });
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
 function toIsoDate(value: unknown) {
   if (typeof value === "string") return value;
   if (value && typeof (value as { toDate?: () => Date }).toDate === "function") {
@@ -815,6 +914,8 @@ export default function App() {
   const [editingGuideId, setEditingGuideId] = useState<string | null>(null);
   const [editingDigitalAppId, setEditingDigitalAppId] = useState<string | null>(null);
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
+  const [bulkAccessResult, setBulkAccessResult] = useState<BulkAccessResult | null>(null);
+  const [accessNotificationDraft, setAccessNotificationDraft] = useState<AccessNotificationDraft | null>(null);
   const [siteStats, setSiteStats] = useState<SiteStats>({
     visits: data.visits,
     activeUsers: data.teachers.filter((teacher) => teacher.active).length,
@@ -1551,6 +1652,62 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
       );
     }
 
+    setBulkAccessResult(null);
+    setAccessNotificationDraft(buildAccessNotificationDraft("granted", [next]));
+    formElement.reset();
+  };
+
+  const addBulkTeachers = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const rawList = String(form.get("bulkTeachers") || "");
+    const subject = String(form.get("subject") || allSubjectsLabel);
+    const role = form.get("role") as Role;
+    const parsed = parseBulkTeachers(rawList, subject, role, data.teachers);
+
+    if (parsed.teachers.length === 0) {
+      setBulkAccessResult({
+        added: 0,
+        updated: 0,
+        skipped: parsed.skipped,
+        invalidLines: parsed.invalidLines,
+      });
+      return;
+    }
+
+    const existingEmails = new Set(data.teachers.map((teacher) => teacher.email.toLowerCase()));
+    const importedByEmail = new Map(parsed.teachers.map((teacher) => [teacher.email.toLowerCase(), teacher]));
+    const newTeachers = parsed.teachers.filter((teacher) => !existingEmails.has(teacher.email.toLowerCase()));
+    const updatedTeachers = data.teachers.map((teacher) => importedByEmail.get(teacher.email.toLowerCase()) ?? teacher);
+
+    const firestore = db;
+    if (firestore) {
+      await Promise.all(
+        parsed.teachers.map((teacher) =>
+          setDoc(
+            doc(firestore, "authorizedUsers", emailDocId(teacher.email)),
+            {
+              ...teacher,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          ),
+        ),
+      );
+    }
+
+    setAndSaveData({
+      ...data,
+      teachers: [...newTeachers, ...updatedTeachers],
+    });
+    setBulkAccessResult({
+      added: newTeachers.length,
+      updated: parsed.teachers.length - newTeachers.length,
+      skipped: parsed.skipped,
+      invalidLines: parsed.invalidLines,
+    });
+    setAccessNotificationDraft(buildAccessNotificationDraft("granted", parsed.teachers));
     formElement.reset();
   };
 
@@ -1573,6 +1730,7 @@ Nếu mã lỗi là permission-denied, hãy kiểm tra Firestore Rules đã Publ
         ...data,
         teachers: data.teachers.map((item) => (item.id === teacher.id ? nextTeacher : item)),
       });
+      setAccessNotificationDraft(buildAccessNotificationDraft(active ? "granted" : "revoked", [nextTeacher]));
     } catch (error) {
       console.error("Không cập nhật được quyền truy cập:", error);
       window.alert(`Chưa cập nhật được quyền truy cập cho ${teacher.email}.
@@ -1592,6 +1750,25 @@ Chi tiết: ${errorMessage(error)}`);
 
     if (db) {
       await deleteDoc(doc(db, "authorizedUsers", emailDocId(teacher.email)));
+    }
+    setAccessNotificationDraft(buildAccessNotificationDraft("revoked", [teacher]));
+  };
+
+  const copyAccessNotification = async (kind: "recipients" | "message") => {
+    if (!accessNotificationDraft) return;
+    const text =
+      kind === "recipients"
+        ? accessNotificationDraft.recipients.join(", ")
+        : `Người nhận: ${accessNotificationDraft.recipients.join(", ")}
+Tiêu đề: ${accessNotificationDraft.subject}
+
+${accessNotificationDraft.body}`;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      window.alert(kind === "recipients" ? "Đã copy danh sách email." : "Đã copy nội dung thông báo.");
+    } catch {
+      window.prompt("Copy nội dung dưới đây:", text);
     }
   };
 
@@ -2816,6 +2993,7 @@ Chi tiết: ${errorMessage(error)}`);
               <div className="admin-panel">
                 <div className="section-heading">
                   <h3>Cấp quyền email</h3>
+                  <span className="pill">Đơn lẻ</span>
                 </div>
                 <form className="editor-form compact" onSubmit={addTeacher}>
                   <input name="name" required placeholder="Họ tên" />
@@ -2836,6 +3014,86 @@ Chi tiết: ${errorMessage(error)}`);
                     Thêm email
                   </button>
                 </form>
+                <div className="bulk-access-block">
+                  <div className="section-heading secondary-heading">
+                    <h3>Thêm hàng loạt</h3>
+                    <span className="pill">Copy dán</span>
+                  </div>
+                  <form className="editor-form compact" onSubmit={addBulkTeachers}>
+                    <textarea
+                      name="bulkTeachers"
+                      rows={7}
+                      required
+                      placeholder={`Nguyễn Văn A, nguyenvana@gmail.com
+Trần Thị B<TAB>tranthib@gmail.com
+leminhc@gmail.com, Lê Minh C`}
+                    />
+                    <div className="form-grid">
+                      <select name="subject" defaultValue={allSubjectsLabel}>
+                        {subjects.map((subject) => (
+                          <option key={subject}>{subject}</option>
+                        ))}
+                      </select>
+                      <select name="role" defaultValue="teacher">
+                        <option value="teacher">Giáo viên</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <button className="primary-button" type="submit">
+                      <ClipboardList size={18} />
+                      Cấp quyền hàng loạt
+                    </button>
+                  </form>
+                  {bulkAccessResult && (
+                    <div className={`auth-note ${bulkAccessResult.invalidLines.length > 0 ? "" : "success"}`}>
+                      Đã thêm {bulkAccessResult.added}, cập nhật {bulkAccessResult.updated}, bỏ qua trùng trong danh sách {bulkAccessResult.skipped}.
+                      {bulkAccessResult.invalidLines.length > 0 && (
+                        <span> Dòng chưa đọc được email: {bulkAccessResult.invalidLines.slice(0, 3).join(" | ")}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {accessNotificationDraft && (
+                  <div className="access-notice-draft">
+                    <div className="section-heading">
+                      <h3>Thông báo quyền truy cập</h3>
+                      <span className="pill">{accessNotificationDraft.mode === "granted" ? "Cấp quyền" : "Thu hồi"}</span>
+                    </div>
+                    <p>
+                      Bản nháp cho {accessNotificationDraft.recipients.length} người nhận. Admin có thể copy hoặc mở Gmail để gửi.
+                    </p>
+                    <label>
+                      Người nhận
+                      <textarea rows={2} readOnly value={accessNotificationDraft.recipients.join(", ")} />
+                    </label>
+                    <label>
+                      Nội dung
+                      <textarea
+                        rows={5}
+                        readOnly
+                        value={`${accessNotificationDraft.subject}\n\n${accessNotificationDraft.body}`}
+                      />
+                    </label>
+                    <div className="review-actions">
+                      <button type="button" className="text-button" onClick={() => void copyAccessNotification("recipients")}>
+                        <Copy size={17} />
+                        Copy email
+                      </button>
+                      <button type="button" className="text-button" onClick={() => void copyAccessNotification("message")}>
+                        <Copy size={17} />
+                        Copy nội dung
+                      </button>
+                      <button
+                        type="button"
+                        className="success-button"
+                        onClick={() => window.open(gmailComposeUrl(accessNotificationDraft), "_blank", "noopener,noreferrer")}
+                      >
+                        <Mail size={17} />
+                        Mở Gmail
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
